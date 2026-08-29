@@ -1,11 +1,24 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://cn8ug4d8tn566"]
 
-[ext_resource type="Script" path="res://scripts/Jugador.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/placeholders/square_placeholder.png" id="2"]
+[ext_resource type="Script" uid="uid://4wa0q1lheu31" path="res://scripts/Jugador.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://c3nwaacy38ili" path="res://assets/placeholders/square_placeholder.png" id="2"]
 
-[node name="Jugador" type="Node2D"]
+[sub_resource type="SpriteFrames" id="SpriteFrames_jugador"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Jugador" type="Node2D" unique_id=2019015775]
 script = ExtResource("1")
 
-[node name="Visual" type="Sprite2D" parent="."]
+[node name="Visual" type="AnimatedSprite2D" parent="." unique_id=1680575407]
 modulate = Color(0.2, 0.5, 0.9, 1)
-texture = ExtResource("2")
+scale = Vector2(0.6, 0.6)
+sprite_frames = SubResource("SpriteFrames_jugador")
+autoplay = "default"

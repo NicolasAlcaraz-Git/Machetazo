@@ -14,7 +14,7 @@ enum Estado {
 
 @export var estado: Estado = Estado.ESPERANDO
 
-@onready var visual: Sprite2D = $Visual
+@onready var visual: AnimatedSprite2D = $Visual
 
 
 func _ready() -> void:

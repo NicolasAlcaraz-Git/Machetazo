@@ -23,7 +23,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 window/size/viewport_width=1024
 window/size/viewport_height=768
-window/size/mode=2
+window/size/mode=3
 window/stretch/mode="canvas_items"
 
 [rendering]

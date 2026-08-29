@@ -5,8 +5,8 @@ extends Node2D
 ## dentro de Aula.tscn (podes arrastrarlos en el editor para reacomodarlos).
 ## Este script solo junta las referencias y arma el estado inicial de la UI.
 
-@onready var label_tiempo: Label = $UI/LabelTiempo
-@onready var label_machetes: Label = $UI/LabelMachetes
+@onready var label_tiempo: Label = $HUD/LabelTiempo
+@onready var label_machetes: Label = $HUD/LabelMachetes
 
 @onready var jugador: Jugador = $Jugador
 @onready var profesora: Profesora = $Profesora

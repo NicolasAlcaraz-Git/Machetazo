@@ -1,11 +1,24 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://o0uiuap6cg8o"]
 
-[ext_resource type="Script" path="res://scripts/Companero.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/placeholders/square_placeholder.png" id="2"]
+[ext_resource type="Script" uid="uid://d06e263lndcp6" path="res://scripts/Companero.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://c3nwaacy38ili" path="res://assets/placeholders/square_placeholder.png" id="2"]
 
-[node name="Companero" type="Node2D"]
+[sub_resource type="SpriteFrames" id="SpriteFrames_companero"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2")
+}],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}]
+
+[node name="Companero" type="Node2D" unique_id=1645962014]
 script = ExtResource("1")
 
-[node name="Visual" type="Sprite2D" parent="."]
+[node name="Visual" type="AnimatedSprite2D" parent="." unique_id=1322877128]
 modulate = Color(0.55, 0.55, 0.55, 1)
-texture = ExtResource("2")
+scale = Vector2(0.6, 0.6)
+sprite_frames = SubResource("SpriteFrames_companero")
+autoplay = "default"
