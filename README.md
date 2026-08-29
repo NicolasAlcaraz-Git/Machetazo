@@ -27,6 +27,31 @@ Los colores de companeros/profesora ya reaccionan a su `estado` (export var
 en el Inspector), aunque todavia nada los cambia automaticamente: eso es
 la Version 0.2 (profesora) y 0.3 (companeros).
 
+### Sprites placeholder (en vez de formas vectoriales)
+
+`Jugador`, `Companero` y `Profesora` usan un nodo `Sprite2D` llamado
+`Visual`, con una textura placeholder blanca lisa
+(`assets/placeholders/square_placeholder.png` para jugador/companeros,
+`rect_placeholder.png` para la profesora) y el color real puesto por
+`modulate`. Cuando tengas el arte definitivo, el cambio es: seleccionar el
+nodo `Visual` en el Inspector y arrastrar el `.png`/`.aseprite` final al
+campo `Texture` (o hacerlo por codigo con `visual.texture = ...`). No hace
+falta tocar ningun script ni la logica de estados.
+
+### Posiciones editables a mano
+
+`Jugador`, `Profesora` y los 8 `Companero_*` ya son nodos reales dentro de
+`Aula.tscn` (antes se generaban por codigo). Podes abrir la escena en el
+editor, seleccionarlos en el panel de escena o hacer click en el viewport
+2D, y moverlos con el mouse o cambiando su `Position` en el Inspector — el
+cambio queda guardado en la escena.
+
+Ojo con los `Companero_*`: cada uno tiene una propiedad exportada
+`Direccion` (Inspector) que indica a que direccion de la palanca
+corresponde. Si movés un compañero a otro lugar de la grilla, actualizale
+tambien la `Direccion` para que siga siendo coherente con el gameplay que
+viene en las proximas versiones.
+
 ## Controles (pensados para programarse en las proximas versiones)
 
 Vas a testear con un **joystick comun** (un stick + un solo boton), y el
@@ -66,13 +91,17 @@ indice correcto. Esto lo podemos armar como parte de la Version 0.4/0.5
 ```
 Machetazo/
 ├── project.godot
+├── assets/
+│   └── placeholders/
+│       ├── square_placeholder.png   # jugador y companeros
+│       └── rect_placeholder.png     # profesora
 ├── scenes/
-│   ├── Aula.tscn        # escena principal, arma todo por codigo
+│   ├── Aula.tscn        # escena principal, con todos los nodos ya colocados
 │   ├── Jugador.tscn
 │   ├── Companero.tscn
 │   └── Profesora.tscn
 └── scripts/
-    ├── Aula.gd
+    ├── Aula.gd          # solo recolecta referencias, no crea nada
     ├── Jugador.gd
     ├── Companero.gd
     └── Profesora.gd

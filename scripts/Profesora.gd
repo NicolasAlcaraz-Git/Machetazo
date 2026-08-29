@@ -21,7 +21,7 @@ const COLOR_MIRA := Color(0.85, 0.2, 0.2)
 		estado = value
 		_actualizar_color()
 
-@onready var visual: Polygon2D = $Visual
+@onready var visual: Sprite2D = $Visual
 
 
 func _ready() -> void:
@@ -33,11 +33,11 @@ func _actualizar_color() -> void:
 		return
 	match estado:
 		Estado.NO_MIRA:
-			visual.color = COLOR_NO_MIRA
+			visual.modulate = COLOR_NO_MIRA
 		Estado.ADVERTENCIA:
-			visual.color = COLOR_ADVERTENCIA
+			visual.modulate = COLOR_ADVERTENCIA
 		Estado.MIRA:
-			visual.color = COLOR_MIRA
+			visual.modulate = COLOR_MIRA
 
 
 func esta_mirando() -> bool:

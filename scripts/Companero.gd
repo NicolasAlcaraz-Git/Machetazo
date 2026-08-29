@@ -32,7 +32,7 @@ const COLOR_DISTRAIDO := Color(0.55, 0.55, 0.55)
 		estado = value
 		_actualizar_color()
 
-@onready var visual: Polygon2D = $Visual
+@onready var visual: Sprite2D = $Visual
 
 
 func _ready() -> void:
@@ -44,11 +44,11 @@ func _actualizar_color() -> void:
 		return
 	match estado:
 		Estado.PREPARADO:
-			visual.color = COLOR_PREPARADO
+			visual.modulate = COLOR_PREPARADO
 		Estado.ADVERTENCIA:
-			visual.color = COLOR_ADVERTENCIA
+			visual.modulate = COLOR_ADVERTENCIA
 		Estado.DISTRAIDO:
-			visual.color = COLOR_DISTRAIDO
+			visual.modulate = COLOR_DISTRAIDO
 
 
 ## Segun el documento: en el primer prototipo, "amarillo" (advertencia)
