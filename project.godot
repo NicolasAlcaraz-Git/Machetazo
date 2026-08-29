@@ -1,19 +1,29 @@
 ; Engine configuration file.
-; Generado a mano para el prototipo Machetazo (Godot 4.8).
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
 config/name="Machetazo"
 config/description="Prototipo de primer nivel - preproduccion de videojuego 2D"
 run/main_scene="res://scenes/Aula.tscn"
-config/features=PackedStringArray("4.3", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+window/size/viewport_width=1024
+window/size/viewport_height=768
+window/size/mode=2
 window/stretch/mode="canvas_items"
 
 [rendering]

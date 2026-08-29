@@ -1,65 +1,66 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://csph2ub3sjen1"]
 
-[ext_resource type="Script" path="res://scripts/Aula.gd" id="1"]
+[ext_resource type="Script" uid="uid://bp5s7q4hw27rt" path="res://scripts/Aula.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/Jugador.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/Profesora.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/Companero.tscn" id="4"]
 
-[node name="Aula" type="Node2D"]
+[node name="Aula" type="Node2D" unique_id=1830206576]
 script = ExtResource("1")
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=568082195]
 
-[node name="LabelTiempo" type="Label" parent="UI"]
+[node name="LabelTiempo" type="Label" parent="UI" unique_id=821828676]
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 260.0
 offset_bottom = 50.0
 text = "TIEMPO: 60"
 
-[node name="LabelMachetes" type="Label" parent="UI"]
+[node name="LabelMachetes" type="Label" parent="UI" unique_id=414013057]
 offset_left = 20.0
 offset_top = 50.0
 offset_right = 300.0
 offset_bottom = 80.0
 text = "MACHETES ENTREGADOS: 0 / 5"
 
-[node name="Profesora" parent="." instance=ExtResource("3")]
+[node name="Profesora" parent="." unique_id=262500386 instance=ExtResource("3")]
 position = Vector2(0, -352)
 
-[node name="Jugador" parent="." instance=ExtResource("2")]
-position = Vector2(0, 0)
+[node name="Jugador" parent="." unique_id=396194553 instance=ExtResource("2")]
 
-[node name="Companeros" type="Node2D" parent="."]
+[node name="Companeros" type="Node2D" parent="." unique_id=2095787161]
 
-[node name="Companero_ArribaIzquierda" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_ArribaIzquierda" parent="Companeros" unique_id=602872451 instance=ExtResource("4")]
 position = Vector2(-220, -220)
 direccion = 4
 
-[node name="Companero_Arriba" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_Arriba" parent="Companeros" unique_id=919089980 instance=ExtResource("4")]
 position = Vector2(0, -220)
-direccion = 0
 
-[node name="Companero_ArribaDerecha" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_ArribaDerecha" parent="Companeros" unique_id=272352776 instance=ExtResource("4")]
 position = Vector2(220, -220)
 direccion = 5
 
-[node name="Companero_Izquierda" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_Izquierda" parent="Companeros" unique_id=1256322202 instance=ExtResource("4")]
 position = Vector2(-220, 0)
 direccion = 2
 
-[node name="Companero_Derecha" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_Derecha" parent="Companeros" unique_id=280697722 instance=ExtResource("4")]
 position = Vector2(220, 0)
 direccion = 3
 
-[node name="Companero_AbajoIzquierda" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_AbajoIzquierda" parent="Companeros" unique_id=8803541 instance=ExtResource("4")]
 position = Vector2(-220, 220)
 direccion = 6
 
-[node name="Companero_Abajo" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_Abajo" parent="Companeros" unique_id=402641743 instance=ExtResource("4")]
 position = Vector2(0, 220)
 direccion = 1
 
-[node name="Companero_AbajoDerecha" parent="Companeros" instance=ExtResource("4")]
+[node name="Companero_AbajoDerecha" parent="Companeros" unique_id=1284622825 instance=ExtResource("4")]
 position = Vector2(220, 220)
 direccion = 7
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=699082773]
+offset = Vector2(0, -50)
