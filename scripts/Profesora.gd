@@ -104,3 +104,17 @@ func _actualizar_color() -> void:
 
 func esta_mirando() -> bool:
 	return estado == Estado.MIRA
+
+
+## Interrumpe el ciclo normal y hace que la profesora empiece a "mirar"
+## AHORA MISMO (por ejemplo: el machete le pego a un companero distraido,
+## sonido de "auch", ella se da vuelta a ver que paso). No causa una
+## derrota inmediata por si sola; eso lo decide Jugador.gd si el jugador
+## vuelve a arriesgarse mientras ella esta en este estado. Al terminar
+## MIRA, retoma la secuencia normal (pasa por ADVERTENCIA como siempre).
+func forzar_mira() -> void:
+	if estado == Estado.MIRA:
+		return # ya esta mirando, no hay nada que forzar
+	_indice_secuencia = _secuencia.find(Estado.MIRA)
+	estado = Estado.MIRA
+	_tiempo_restante = _duracion_con_variacion(Estado.MIRA)

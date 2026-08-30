@@ -9,6 +9,11 @@ class_name BarraProgreso
 @export var color_relleno: Color = Color(0.85, 0.2, 0.2, 1.0)
 @export var color_borde: Color = Color(1, 1, 1, 0.6)
 
+## Si esta en true, se llena de abajo hacia arriba (para ponerla parada,
+## a un costado de la pantalla). Si esta en false, se llena de izquierda
+## a derecha (para ponerla horizontal, arriba o abajo de la pantalla).
+@export var vertical: bool = false
+
 var progreso: float = 0.0:
 	set(value):
 		progreso = clamp(value, 0.0, 1.0)
@@ -19,8 +24,13 @@ func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	draw_rect(rect, color_fondo)
 
-	var ancho_relleno := size.x * progreso
-	if ancho_relleno > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(ancho_relleno, size.y)), color_relleno)
+	if progreso > 0.0:
+		if vertical:
+			var alto_relleno := size.y * progreso
+			var origen := Vector2(0, size.y - alto_relleno)
+			draw_rect(Rect2(origen, Vector2(size.x, alto_relleno)), color_relleno)
+		else:
+			var ancho_relleno := size.x * progreso
+			draw_rect(Rect2(Vector2.ZERO, Vector2(ancho_relleno, size.y)), color_relleno)
 
 	draw_rect(rect, color_borde, false, 2.0)

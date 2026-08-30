@@ -1,7 +1,7 @@
 extends Node2D
 class_name Aula
 
-## Version 0.4 + 0.5 - Aula (director de companeros + fin de partida)
+## Version 0.5.2 - Aula (director de companeros + temporizador + fin de partida)
 ## El jugador, la profesora y los 8 companeros son nodos hijos reales
 ## dentro de Aula.tscn (podes arrastrarlos en el editor para reacomodarlos).
 ##
@@ -14,7 +14,8 @@ class_name Aula
 ##
 ## Meta del nivel: cada companero necesita "machetes_necesarios" machetes
 ## (2 por defecto, ver Companero.gd) antes de quedar agotado. Cuando los 8
-## quedan agotados, se gana el nivel.
+## quedan agotados, se gana el nivel. Si se acaba el tiempo antes de eso,
+## se pierde.
 
 @onready var label_tiempo: Label = $HUD/LabelTiempo
 @onready var label_machetes: Label = $HUD/LabelMachetes
@@ -48,6 +49,17 @@ var barra_machete: BarraProgreso
 var _companeros_activos: Array[Companero] = []
 var _tiempo_para_proxima_activacion: float = 0.0
 
+## --- Temporizador general del nivel ---
+
+## Tiempo total del nivel, en segundos. 5 minutos por defecto.
+@export var tiempo_total: float = 300.0
+
+## Cuanto tiempo se resta por cada error (lanzar afuera o golpear a un
+## companero distraido). Ver registrar_error() / registrar_golpe().
+@export var penalizacion_tiempo: float = 5.0
+
+var _tiempo_restante: float = 0.0
+
 ## --- Meta del nivel ---
 
 var _entregas_exitosas: int = 0
@@ -65,7 +77,10 @@ func _ready() -> void:
 	barra_machete = _crear_barra_machete()
 	$HUD.add_child(barra_machete)
 
-	_actualizar_ui_placeholder()
+	_tiempo_restante = tiempo_total
+	_actualizar_label_tiempo()
+	label_machetes.text = "MACHETES ENTREGADOS: 0 / %d" % _meta_machetes()
+
 	_tiempo_para_proxima_activacion = tiempo_inicial_quieto
 
 
@@ -76,6 +91,10 @@ func _process(delta: float) -> void:
 	if _tiempo_para_proxima_activacion <= 0.0:
 		_intentar_activar_uno()
 
+	_avanzar_temporizador(delta)
+
+
+## --- Director de companeros ---
 
 ## Les avisa a los companeros activos que paso el tiempo (para que avancen
 ## su propia mini-secuencia PREPARADO -> ADVERTENCIA -> DISTRAIDO) y los
@@ -114,6 +133,47 @@ func _intentar_activar_uno() -> void:
 	_companeros_activos.append(elegido)
 
 
+## --- Temporizador general ---
+
+func _avanzar_temporizador(delta: float) -> void:
+	if _tiempo_restante <= 0.0:
+		return
+
+	_tiempo_restante = max(0.0, _tiempo_restante - delta)
+	_actualizar_label_tiempo()
+
+	if _tiempo_restante <= 0.0:
+		jugador.perder_por_tiempo()
+
+
+func _actualizar_label_tiempo() -> void:
+	var segundos_totales := int(ceil(_tiempo_restante))
+	var minutos := segundos_totales / 60
+	var segundos := segundos_totales % 60
+	label_tiempo.text = "TIEMPO: %d:%02d" % [minutos, segundos]
+
+
+## Resta tiempo por un error (lanzar sin objetivo valido). No tiene
+## reaccion de la profesora: no habia nadie a quien pegarle.
+func registrar_error() -> void:
+	_restar_tiempo(penalizacion_tiempo)
+
+
+## Resta tiempo Y ademas hace que la profesora mire de inmediato: el
+## machete golpeo a un companero distraido (grito de "auch", ella se da
+## vuelta). No es derrota inmediata por si sola.
+func registrar_golpe(_companero: Companero) -> void:
+	profesora.forzar_mira()
+	_restar_tiempo(penalizacion_tiempo)
+
+
+func _restar_tiempo(segundos: float) -> void:
+	_tiempo_restante = max(0.0, _tiempo_restante - segundos)
+	_actualizar_label_tiempo()
+	if _tiempo_restante <= 0.0:
+		jugador.perder_por_tiempo()
+
+
 ## --- Meta del nivel / HUD ---
 
 func _meta_machetes() -> int:
@@ -128,23 +188,11 @@ func registrar_entrega_exitosa() -> void:
 	label_machetes.text = "MACHETES ENTREGADOS: %d / %d" % [_entregas_exitosas, _meta_machetes()]
 
 
-## Gancho para cuando el temporizador general este implementado (v0.7):
-## por ahora un error no tiene consecuencia real ademas de reiniciar el
-## machete del jugador (eso ya lo maneja Jugador.gd).
-func registrar_error() -> void:
-	pass
-
-
 func todos_los_companeros_agotados() -> bool:
 	for companero in companeros:
 		if not companero.esta_agotado():
 			return false
 	return true
-
-
-func _actualizar_ui_placeholder() -> void:
-	label_tiempo.text = "TIEMPO: 60"
-	label_machetes.text = "MACHETES ENTREGADOS: 0 / %d" % _meta_machetes()
 
 
 func _crear_label_fin() -> Label:
@@ -168,14 +216,17 @@ func mostrar_mensaje_fin(texto: String) -> void:
 	label_fin.visible = true
 
 
+## Barra vertical a la izquierda de la pantalla (no tapa a los companeros
+## de abajo, a diferencia de la version horizontal anterior).
 func _crear_barra_machete() -> BarraProgreso:
 	var barra := BarraProgreso.new()
 	barra.name = "BarraMachete"
-	barra.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	barra.offset_left = -200
-	barra.offset_right = 200
-	barra.offset_top = -70
-	barra.offset_bottom = -35
+	barra.vertical = true
+	barra.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	barra.offset_left = 24
+	barra.offset_right = 60
+	barra.offset_top = -150
+	barra.offset_bottom = 150
 	return barra
 
 

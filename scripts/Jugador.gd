@@ -28,7 +28,7 @@ const COLOR_PERDIO := Color(0.85, 0.2, 0.2, 1)
 const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 
 ## Cuantas pulsaciones hacen falta para terminar de crear un machete.
-@export var pulsaciones_para_crear: int = 10
+@export var pulsaciones_para_crear: int = 15
 
 ## Por debajo de esta magnitud, la palanca se considera "sin direccion"
 ## (el cursor vuelve al centro).
@@ -70,16 +70,19 @@ func _process(_delta: float) -> void:
 
 func _procesar_creacion() -> void:
 	if Input.is_action_just_pressed("accion"):
+		# El riesgo es del apreton, no de "seguir existiendo en CREANDO":
+		# si en ESTE instante la profesora ya esta mirando, pierde. Si
+		# todavia esta en amarillo (advertencia), el apreton es valido —
+		# es una apuesta del jugador, no una derrota asegurada.
+		if aula.profesora.esta_mirando():
+			_perder()
+			return
+
 		contador_machete += 1
 		estado = Estado.CREANDO
 		aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
 		if contador_machete >= pulsaciones_para_crear:
 			_terminar_creacion()
-
-	# Si la profesora mira MIENTRAS se esta creando (aunque sea a mitad de
-	# camino, sin necesidad de que el jugador toque nada mas), pierde.
-	if estado == Estado.CREANDO and aula.profesora.esta_mirando():
-		_perder()
 
 
 func _terminar_creacion() -> void:
@@ -149,8 +152,12 @@ func _intentar_lanzar() -> void:
 		return
 
 	var companero := aula.obtener_companero_en(direccion_actual)
-	if companero == null or not companero.esta_disponible():
+	if companero == null:
 		_error_lanzamiento()
+		return
+
+	if not companero.esta_disponible():
+		_golpe_a_companero(companero)
 		return
 
 	_lanzamiento_exitoso(companero)
@@ -165,8 +172,18 @@ func _lanzamiento_exitoso(companero: Companero) -> void:
 		_ganar()
 
 
+## Tiro afuera: sin direccion o sin companero en esa direccion. No hay
+## nadie a quien pegarle, asi que la profesora no reacciona por esto.
 func _error_lanzamiento() -> void:
 	aula.registrar_error()
+	_volver_a_esperar()
+
+
+## El machete le pega a un companero que no estaba atento (distraido o ya
+## agotado): la profesora se da vuelta a mirar de inmediato (ver
+## Profesora.forzar_mira()) y se pierde tiempo. No es derrota inmediata.
+func _golpe_a_companero(companero: Companero) -> void:
+	aula.registrar_golpe(companero)
 	_volver_a_esperar()
 
 
@@ -179,6 +196,11 @@ func _volver_a_esperar() -> void:
 
 
 ## --- Fin de partida ---
+
+## Llamado por Aula.gd cuando el temporizador general llega a 0.
+func perder_por_tiempo() -> void:
+	_perder()
+
 
 func _perder() -> void:
 	if _partida_terminada:
