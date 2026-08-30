@@ -1,15 +1,20 @@
 extends Node2D
+class_name Aula
 
-## Version 0.3.2 - Aula (director de companeros)
+## Version 0.4 + 0.5 - Aula (director de companeros + fin de partida)
 ## El jugador, la profesora y los 8 companeros son nodos hijos reales
 ## dentro de Aula.tscn (podes arrastrarlos en el editor para reacomodarlos).
 ##
 ## Ademas de recolectar referencias, este script actua como "director de
 ## escena" para los companeros: en vez de que cada uno decida por su cuenta
 ## cuando activarse (lo que generaba coincidencias por simple azar al ser
-## 8 procesos en paralelo), Aula.gd decide de a uno (rara vez dos) cuando
-## le toca a cada companero abrir su ventana de disponibilidad, respetando
-## un maximo simultaneo y una pausa minima entre activaciones.
+## 8 procesos en paralelo), Aula.gd decide de a uno cuando le toca a cada
+## companero abrir su ventana de disponibilidad, respetando un maximo
+## simultaneo y una pausa minima entre activaciones.
+##
+## Meta del nivel: cada companero necesita "machetes_necesarios" machetes
+## (2 por defecto, ver Companero.gd) antes de quedar agotado. Cuando los 8
+## quedan agotados, se gana el nivel.
 
 @onready var label_tiempo: Label = $HUD/LabelTiempo
 @onready var label_machetes: Label = $HUD/LabelMachetes
@@ -18,12 +23,14 @@ extends Node2D
 @onready var profesora: Profesora = $Profesora
 
 var companeros: Array[Companero] = []
+var label_fin: Label
+var barra_machete: BarraProgreso
 
 ## --- Director de companeros ---
 
 ## Nunca hay mas de esta cantidad de companeros en PREPARADO/ADVERTENCIA
-## al mismo tiempo. Con 2 pueden coincidir ocasionalmente dos, pero nunca
-## tres o mas (a proposito, segun lo charlado: 2 esta bien, 3+ ya no).
+## al mismo tiempo. Con 2 pueden coincidir ocasionalmente dos; en general
+## se recomienda no pasar de 2-3 para que siga sintiendose sigiloso.
 @export var maximo_simultaneos: int = 3
 
 ## Tiempo (segundos) que TODOS los companeros pasan quietos/distraidos al
@@ -41,12 +48,22 @@ var companeros: Array[Companero] = []
 var _companeros_activos: Array[Companero] = []
 var _tiempo_para_proxima_activacion: float = 0.0
 
+## --- Meta del nivel ---
+
+var _entregas_exitosas: int = 0
+
 
 func _ready() -> void:
 	for hijo in $Companeros.get_children():
 		if hijo is Companero:
 			hijo.desactivar()
 			companeros.append(hijo)
+
+	label_fin = _crear_label_fin()
+	$HUD.add_child(label_fin)
+
+	barra_machete = _crear_barra_machete()
+	$HUD.add_child(barra_machete)
 
 	_actualizar_ui_placeholder()
 	_tiempo_para_proxima_activacion = tiempo_inicial_quieto
@@ -74,7 +91,8 @@ func _avanzar_companeros_activos(delta: float) -> void:
 
 ## Se llama cada vez que se cumple la pausa. Programa el proximo intento
 ## SIEMPRE (haya exito o no), y si hay lugar libre, activa a un companero
-## al azar entre los que estan distraidos y no estan ya activos.
+## al azar entre los que estan distraidos, no estan ya activos y no estan
+## agotados (ya recibieron todos sus machetes).
 func _intentar_activar_uno() -> void:
 	_tiempo_para_proxima_activacion = randf_range(
 		pausa_entre_activaciones_min, pausa_entre_activaciones_max
@@ -85,7 +103,7 @@ func _intentar_activar_uno() -> void:
 
 	var candidatos: Array[Companero] = []
 	for companero in companeros:
-		if companero.estado == Companero.Estado.DISTRAIDO:
+		if companero.estado == Companero.Estado.DISTRAIDO and not companero.esta_agotado():
 			candidatos.append(companero)
 
 	if candidatos.is_empty():
@@ -96,13 +114,77 @@ func _intentar_activar_uno() -> void:
 	_companeros_activos.append(elegido)
 
 
+## --- Meta del nivel / HUD ---
+
+func _meta_machetes() -> int:
+	var total := 0
+	for companero in companeros:
+		total += companero.machetes_necesarios
+	return total
+
+
+func registrar_entrega_exitosa() -> void:
+	_entregas_exitosas += 1
+	label_machetes.text = "MACHETES ENTREGADOS: %d / %d" % [_entregas_exitosas, _meta_machetes()]
+
+
+## Gancho para cuando el temporizador general este implementado (v0.7):
+## por ahora un error no tiene consecuencia real ademas de reiniciar el
+## machete del jugador (eso ya lo maneja Jugador.gd).
+func registrar_error() -> void:
+	pass
+
+
+func todos_los_companeros_agotados() -> bool:
+	for companero in companeros:
+		if not companero.esta_agotado():
+			return false
+	return true
+
+
 func _actualizar_ui_placeholder() -> void:
 	label_tiempo.text = "TIEMPO: 60"
-	label_machetes.text = "MACHETES ENTREGADOS: 0 / 5"
+	label_machetes.text = "MACHETES ENTREGADOS: 0 / %d" % _meta_machetes()
 
 
-## Utilidad para versiones futuras: devuelve el companero que esta
-## en una direccion dada (o null si no existe).
+func _crear_label_fin() -> Label:
+	var label := Label.new()
+	label.name = "LabelFin"
+	label.add_theme_font_size_override("font_size", 56)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_CENTER)
+	label.offset_left = -300
+	label.offset_right = 300
+	label.offset_top = -40
+	label.offset_bottom = 40
+	label.visible = false
+	return label
+
+
+## Llamado por Jugador.gd al ganar o perder.
+func mostrar_mensaje_fin(texto: String) -> void:
+	label_fin.text = texto
+	label_fin.visible = true
+
+
+func _crear_barra_machete() -> BarraProgreso:
+	var barra := BarraProgreso.new()
+	barra.name = "BarraMachete"
+	barra.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	barra.offset_left = -200
+	barra.offset_right = 200
+	barra.offset_top = -70
+	barra.offset_bottom = -35
+	return barra
+
+
+## Llamado por Jugador.gd cada vez que cambia el contador 0/10 de creacion.
+func actualizar_barra_machete(actual: int, total: int) -> void:
+	barra_machete.progreso = float(actual) / float(total) if total > 0 else 0.0
+
+
+## Utilidad: devuelve el companero que esta en una direccion dada (o null).
 func obtener_companero_en(direccion: Companero.Direccion) -> Companero:
 	for companero in companeros:
 		if companero.direccion == direccion:

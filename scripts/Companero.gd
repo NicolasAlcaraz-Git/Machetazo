@@ -32,6 +32,7 @@ enum Estado {
 const COLOR_PREPARADO := Color(0.25, 0.8, 0.35)
 const COLOR_ADVERTENCIA := Color(0.95, 0.85, 0.2)
 const COLOR_DISTRAIDO := Color(0.55, 0.55, 0.55)
+const COLOR_AGOTADO := Color(1, 1, 1)
 
 @export var direccion: Direccion = Direccion.ARRIBA
 
@@ -45,6 +46,12 @@ const COLOR_DISTRAIDO := Color(0.55, 0.55, 0.55)
 ## ventana de cada companero no dure siempre exactamente lo mismo.
 @export var variacion_aleatoria: float = 1.5
 
+## Cuantos machetes necesita este companero antes de quedar "agotado"
+## (ya no vuelve a estar disponible para el resto del nivel).
+@export var machetes_necesarios: int = 2
+
+var machetes_recibidos: int = 0
+
 @export var estado: Estado = Estado.DISTRAIDO:
 	set(value):
 		estado = value
@@ -57,6 +64,19 @@ var _tiempo_restante: float = 0.0
 
 func _ready() -> void:
 	_actualizar_color()
+
+
+## Llamado por Jugador.gd cuando le entrega un machete exitosamente.
+## Si llega al maximo, el companero queda agotado (ver esta_agotado()).
+func recibir_machete() -> void:
+	machetes_recibidos += 1
+	if esta_agotado():
+		desactivar()
+
+
+## Una vez agotado, nunca mas vuelve a estar disponible en este nivel.
+func esta_agotado() -> bool:
+	return machetes_recibidos >= machetes_necesarios
 
 
 ## Llamado por Aula.gd (el "director") cuando decide que le toca a este
@@ -98,6 +118,9 @@ func _con_variacion(base: float) -> float:
 func _actualizar_color() -> void:
 	if not is_instance_valid(visual):
 		return
+	if esta_agotado():
+		visual.modulate = COLOR_AGOTADO
+		return
 	match estado:
 		Estado.PREPARADO:
 			visual.modulate = COLOR_PREPARADO
@@ -108,6 +131,9 @@ func _actualizar_color() -> void:
 
 
 ## Segun el documento: en el primer prototipo, "amarillo" (advertencia)
-## todavia se considera un lanzamiento valido.
+## todavia se considera un lanzamiento valido. Un companero agotado nunca
+## es valido, sin importar su color actual.
 func esta_disponible() -> bool:
+	if esta_agotado():
+		return false
 	return estado == Estado.PREPARADO or estado == Estado.ADVERTENCIA
