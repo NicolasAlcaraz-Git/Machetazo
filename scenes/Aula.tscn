@@ -29,6 +29,7 @@ position = Vector2(0, -320)
 
 [node name="Jugador" parent="." unique_id=559416904 instance=ExtResource("2")]
 position = Vector2(0, 60)
+decaimiento_por_segundo = 5.0
 
 [node name="Companeros" type="Node2D" parent="." unique_id=2089303573]
 
@@ -46,10 +47,12 @@ direccion = 5
 [node name="Companero_Izquierda" parent="Companeros" unique_id=1172474080 instance=ExtResource("4")]
 position = Vector2(-180, 60)
 direccion = 2
+es_extension = true
 
 [node name="Companero_Derecha" parent="Companeros" unique_id=538081398 instance=ExtResource("4")]
 position = Vector2(180, 60)
 direccion = 3
+es_extension = true
 
 [node name="Companero_AbajoIzquierda" parent="Companeros" unique_id=437731765 instance=ExtResource("4")]
 position = Vector2(-180, 220)
@@ -62,6 +65,30 @@ direccion = 1
 [node name="Companero_AbajoDerecha" parent="Companeros" unique_id=1920451236 instance=ExtResource("4")]
 position = Vector2(180, 220)
 direccion = 7
+
+[node name="Companero_LateralIzqArr" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(-360, -100)
+direccion = 8
+
+[node name="Companero_LateralIzqCen" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(-360, 60)
+direccion = 9
+
+[node name="Companero_LateralIzqAba" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(-360, 220)
+direccion = 10
+
+[node name="Companero_LateralDerArr" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(360, -100)
+direccion = 11
+
+[node name="Companero_LateralDerCen" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(360, 60)
+direccion = 12
+
+[node name="Companero_LateralDerAba" parent="Companeros" instance=ExtResource("4")]
+position = Vector2(360, 220)
+direccion = 13
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1568107990]
 offset = Vector2(0, -80)

@@ -17,6 +17,10 @@ const COLOR_INVALIDO := Color(0.9, 0.25, 0.25)
 var _color_actual: Color = COLOR_INVALIDO
 
 
+func _ready() -> void:
+	Fx.respirar(self, 0.06, 0.6)
+
+
 func _draw() -> void:
 	var m := tamano / 2.0
 	_dibujar_esquina(Vector2(-m, -m), Vector2(1, 0), Vector2(0, 1))
@@ -31,8 +35,15 @@ func _dibujar_esquina(origen: Vector2, dir_x: Vector2, dir_y: Vector2) -> void:
 
 
 ## Llamar cada vez que cambia si el objetivo actual es valido o no.
+## Interpola el color de las lineas para que el cambio sea fluido.
 func actualizar(valido: bool) -> void:
 	var nuevo_color := COLOR_VALIDO if valido else COLOR_INVALIDO
 	if nuevo_color != _color_actual:
-		_color_actual = nuevo_color
-		queue_redraw()
+		var tween := create_tween()
+		tween.tween_method(_set_color_interpolado, _color_actual, nuevo_color, 0.12)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+func _set_color_interpolado(color: Color) -> void:
+	_color_actual = color
+	queue_redraw()

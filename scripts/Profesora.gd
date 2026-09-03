@@ -3,7 +3,7 @@ class_name Profesora
 
 ## Version 0.2 - Profesora
 ## Ciclo automatico (ver punto 8 del documento de diseno):
-## NO_MIRA -> ADVERTENCIA -> MIRA -> ADVERTENCIA -> NO_MIRA -> (repetir)
+## NO_MIRA -> ADVERTENCIA -> MIRA -> NO_MIRA -> (repetir)
 ##
 ## NO_MIRA y MIRA tienen variacion aleatoria (para que el patron no sea
 ## contable/monotono). ADVERTENCIA a proposito NO varia: el aviso amarillo
@@ -45,8 +45,11 @@ const COLOR_MIRA := Color(0.85, 0.2, 0.2)
 
 @onready var visual: AnimatedSprite2D = $Visual
 
-## La secuencia repite ADVERTENCIA dos veces (entrando y saliendo de MIRA),
-## tal como lo describe el documento.
+## La secuencia es NO_MIRA -> ADVERTENCIA -> MIRA -> ADVERTENCIA -> (repetir).
+## Hay dos ADVERTENCIA: la de "entrada" (va a mirar) y la de "salida" (va a
+## dejar de mirar). Asi, despues de MIRA (rojo) siempre viene un amarillo
+## antes de volver a NO_MIRA (verde): el ciclo nunca salta directo de rojo
+## a verde.
 var _secuencia: Array[Estado] = [
 	Estado.NO_MIRA,
 	Estado.ADVERTENCIA,
@@ -93,13 +96,15 @@ func _duracion_con_variacion(valor: Estado) -> float:
 func _actualizar_color() -> void:
 	if not is_instance_valid(visual):
 		return
+	var color: Color
 	match estado:
 		Estado.NO_MIRA:
-			visual.modulate = COLOR_NO_MIRA
+			color = COLOR_NO_MIRA
 		Estado.ADVERTENCIA:
-			visual.modulate = COLOR_ADVERTENCIA
+			color = COLOR_ADVERTENCIA
 		Estado.MIRA:
-			visual.modulate = COLOR_MIRA
+			color = COLOR_MIRA
+	Fx.color(visual, color)
 
 
 func esta_mirando() -> bool:
