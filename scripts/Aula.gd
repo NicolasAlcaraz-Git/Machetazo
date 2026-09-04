@@ -26,6 +26,7 @@ class_name Aula
 var companeros: Array[Companero] = []
 var label_fin: Label
 var label_en_mano: Label
+var label_racha: Label
 var barra_machete: BarraProgreso
 
 ## --- Director de companeros ---
@@ -61,12 +62,16 @@ var _tiempo_para_proxima_activacion: float = 0.0
 
 ## --- Temporizador general del nivel ---
 
-## Tiempo total del nivel, en segundos. 5 minutos por defecto.
-@export var tiempo_total: float = 300.0
+## Tiempo total del nivel, en segundos. 6 minutos por defecto.
+@export var tiempo_total: float = 360.0
 
 ## Cuanto tiempo se resta por cada error (lanzar afuera o golpear a un
 ## companero distraido). Ver registrar_error() / registrar_golpe().
 @export var penalizacion_tiempo: float = 5.0
+
+## Ruta de la escena del nivel siguiente ("" = este es el ultimo nivel y se
+## recarga al ganarlo). Al ganar el nivel, el juego carga esta escena.
+@export var siguiente_escena: String = ""
 
 var _tiempo_restante: float = 0.0
 
@@ -87,6 +92,10 @@ func _ready() -> void:
 	label_en_mano = _crear_label_en_mano()
 	$HUD.add_child(label_en_mano)
 
+	label_racha = _crear_label_racha()
+	$HUD.add_child(label_racha)
+	label_racha.text = "RACHA: 0"
+
 	barra_machete = _crear_barra_machete()
 	$HUD.add_child(barra_machete)
 
@@ -98,6 +107,7 @@ func _ready() -> void:
 	_aplicar_sombra(label_tiempo)
 	_aplicar_sombra(label_machetes)
 	_aplicar_sombra(label_en_mano)
+	_aplicar_sombra(label_racha)
 	_aplicar_sombra(label_fin)
 
 	_tiempo_para_proxima_activacion = tiempo_inicial_quieto
@@ -171,8 +181,7 @@ func _intentar_activar_extension() -> void:
 	var candidatos: Array[Companero] = []
 	for companero in companeros:
 		if companero.es_extension \
-			and companero.estado == Companero.Estado.DISTRAIDO \
-			and not companero.esta_agotado():
+			and companero.estado == Companero.Estado.DISTRAIDO:
 			candidatos.append(companero)
 
 	if candidatos.is_empty():
@@ -238,11 +247,44 @@ func registrar_entrega_exitosa() -> void:
 	label_machetes.text = "MACHETES ENTREGADOS: %d / %d" % [_entregas_exitosas, _meta_machetes()]
 
 
+## El jugador devolvio el machete al nene del medio desde un banco lateral
+## de extension. No premia ni penaliza; solo se registra para coherencia.
+func registrar_devolucion() -> void:
+	pass
+
+
 func todos_los_companeros_agotados() -> bool:
 	for companero in companeros:
 		if not companero.esta_agotado():
 			return false
 	return true
+
+
+## -- Transicion entre niveles --
+
+## True si este nivel tiene una escena siguiente configurada (no es el ultimo).
+func tiene_siguiente_escena() -> bool:
+	return not siguiente_escena.is_empty()
+
+
+## Fade a negro y carga la escena siguiente. Llamado por Jugador.gd cuando se
+## gana el nivel y existe un siguiente.
+func transicionar_nivel() -> void:
+	get_tree().paused = true
+
+	var overlay := ColorRect.new()
+	overlay.name = "FadeReinicio"
+	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	overlay.color = Color(0, 0, 0, 0)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	$HUD.add_child(overlay)
+	var tween := overlay.create_tween()
+	tween.tween_property(overlay, "color:a", 1.0, 0.5)
+
+	await get_tree().create_timer(jugador.tiempo_reinicio).timeout
+	get_tree().paused = false
+	get_tree().change_scene_to_file(siguiente_escena)
 
 
 func _crear_label_fin() -> Label:
@@ -285,6 +327,25 @@ func _crear_label_en_mano() -> Label:
 ## mano (set en curso).
 func actualizar_en_mano(actual: int, total: int) -> void:
 	label_en_mano.text = "EN MANO: %d / %d" % [actual, total]
+
+
+## Label chico que muestra la racha vigente y los clicks que pide el proximo
+## set. Se actualiza con cada entrega (verde suma/amarillo-azul congela) y se
+## resetea con cada fallo.
+func _crear_label_racha() -> Label:
+	var label := Label.new()
+	label.name = "LabelRacha"
+	label.add_theme_font_size_override("font_size", 22)
+	label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	label.offset_left = 20
+	label.offset_top = 108
+	return label
+
+
+## Llamado por Jugador.gd cada vez que cambia la racha o las pulsaciones
+## requeridas para crear el proximo set.
+func actualizar_racha(racha: int, requeridas: int) -> void:
+	label_racha.text = "RACHA: %d   |   CLICKS/SET: %d" % [racha, requeridas]
 
 
 ## Barra vertical a la izquierda de la pantalla (no tapa a los companeros

@@ -22,7 +22,7 @@ enum Estado {
 	CREANDO,    ## Contador 0/30, vulnerable si la profesora mira.
 	APUNTANDO,  ## Cursor activo, se pasan los machetes del set en secuencia.
 	CONTROLANDO_EXTENSION, ## Apuntando desde un banco lateral (extension) hacia
-	                       ## los 3 bancos extra de su lado.
+						   ## los 3 bancos extra de su lado.
 }
 
 const COLOR_NORMAL := Color(0.2, 0.5, 0.9, 1)
@@ -53,10 +53,40 @@ const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 ## barra empiece a vaciarse. Evita que decaiga entre pulsaciones rapidas.
 @export var retraso_decaimiento: float = 1.0
 
+## --- Sistema de rachas / combos ---
+
+## Cantidad exacta de machetes entregados en verde (PREPARADO) consecutivos
+## (sin fallar entre medio) que reduce las pulsaciones necesarias para crear
+## el proximo set. Con racha 5 -> se restan 5 pulsaciones, racha 10 -> 10, etc.
+@export var racha_para_reducir: int = 5
+
+## Cuantas pulsaciones se restan a la creacion cada vez que se alcanza un
+## nuevo multiplo de racha_para_reducir (5 -> 30, 25, 20...).
+@export var reduccion_racha: int = 5
+
+## Piso de pulsaciones: por mas racha que se acumule, nunca se pide crear un
+## set con menos de esta cantidad de clicks.
+@export var pulsaciones_minimas: int = 5
+
 @export var estado: Estado = Estado.ESPERANDO
 
 @onready var visual: AnimatedSprite2D = $Visual
 @onready var aula: Aula = get_parent()
+
+## Valor base de pulsaciones_para_crear (se conserva para resetear cuando se
+## pierde la racha). Se toma de pulsaciones_para_crear en _ready.
+var _requeridas_base: int = 30
+
+## Pulsaciones requeridas ACTUALES, que van bajando de 5 en 5 con la racha
+## (30 -> 25 -> 20 -> ... -> minimo 5) y vuelven a _requeridas_base al fallar.
+var _requeridas_actual: int = 30
+
+## Racha actual: cantidad de machetes entregados en verde seguidos.
+var racha_actual: int = 0
+
+## Proximo multiplo de racha_para_reducir que le toca alcanzar para que la
+## creacion baje 5 pulsaciones. Ej.: 5 -> 10 -> 15...
+var _siguiente_hito_racha: int = 5
 
 var contador_machete: int = 0
 var _decaimiento_acumulado: float = 0.0
@@ -72,6 +102,8 @@ var _companero_controlado: Companero = null
 
 
 func _ready() -> void:
+	_requeridas_base = pulsaciones_para_crear
+	_requeridas_actual = pulsaciones_para_crear
 	cursor = Cursor.new()
 	cursor.visible = false
 	add_child(cursor)
@@ -107,8 +139,8 @@ func _procesar_creacion(delta: float) -> void:
 		_decaimiento_acumulado = 0.0 # el pulso frena el decaimiento
 		_tiempo_sin_pulsar = 0.0
 		estado = Estado.CREANDO
-		aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
-		if contador_machete >= pulsaciones_para_crear:
+		aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+		if contador_machete >= _requeridas_actual:
 			_terminar_creacion()
 		return
 
@@ -123,7 +155,7 @@ func _procesar_creacion(delta: float) -> void:
 				var bajar := int(_decaimiento_acumulado)
 				_decaimiento_acumulado -= float(bajar)
 				contador_machete = max(0, contador_machete - bajar)
-				aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
+				aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
 
 
 func _terminar_creacion() -> void:
@@ -134,6 +166,7 @@ func _terminar_creacion() -> void:
 	cursor.visible = true
 	cursor.actualizar(false) # arranca en el centro = invalido (rojo)
 	aula.actualizar_en_mano(machetes_en_mano, machetes_por_set)
+	aula.actualizar_barra_machete(machetes_en_mano, machetes_por_set)
 
 
 ## --- Version 0.5: apuntado y lanzamiento ---
@@ -216,6 +249,15 @@ func _intentar_lanzar() -> void:
 
 
 func _lanzamiento_exitoso(companero: Companero) -> void:
+	## La racha sume solo si el machete se entrega con el companero en verde
+	## (PREPARADO). En amarillo (ADVERTENCIA) o en el banco azul de extension
+	## la racha se congela: no suma ni resta.
+	match companero.estado:
+		Companero.Estado.PREPARADO:
+			_sumar_a_la_racha()
+		_:
+			aula.actualizar_racha(racha_actual, _requeridas_actual)
+
 	companero.recibir_machete()
 	aula.registrar_entrega_exitosa()
 	MacheteTrazo.crear(aula, position, companero.position)
@@ -233,6 +275,9 @@ func _descontar_machete() -> void:
 		return
 	machetes_en_mano -= 1
 	aula.actualizar_en_mano(machetes_en_mano, machetes_por_set)
+	## La barra muestra los machetes EN POSESION: baja con cada entrega,
+	## aprovechando las lineas divisorias del set (machetes_por_set segmentos).
+	aula.actualizar_barra_machete(machetes_en_mano, machetes_por_set)
 	if machetes_en_mano <= 0:
 		_volver_a_esperar()
 
@@ -248,9 +293,11 @@ func _error_lanzamiento() -> void:
 ## El machete le pega a un companero que no estaba atento (distraido o ya
 ## agotado): la profesora se da vuelta a mirar de inmediato (ver
 ## Profesora.forzar_mira()), se pierde tiempo y se desperdicia un machete
-## del set. No es derrota inmediata.
+## del set. No es derrota inmediata. Ademas, rompe la racha: vuelve a 0 y los
+## clicks para crear el proximo set vuelven a 30 (ver _resetear_racha).
 func _golpe_a_companero(companero: Companero) -> void:
 	aula.registrar_golpe(companero)
+	_resetear_racha()
 	Fx.shake(companero, 7.0, 0.18)
 	_descontar_machete()
 
@@ -261,10 +308,34 @@ func _volver_a_esperar() -> void:
 	_tiempo_sin_pulsar = 0.0
 	machetes_en_mano = 0
 	direccion_actual = -1
+	_companero_controlado = null
 	cursor.visible = false
 	estado = Estado.ESPERANDO
-	aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
+	aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
 	aula.actualizar_en_mano(machetes_en_mano, machetes_por_set)
+
+
+## --- Sistema de rachas / combos ---
+
+## Llamado cuando se entrega un machete con el companero en verde (PREPARADO).
+## Suma 1 a la racha; al alcanzar un nuevo multiplo de racha_para_reducir,
+## baja las pulsaciones para crear el proximo set (5 menos, hasta el piso).
+func _sumar_a_la_racha() -> void:
+	racha_actual += 1
+	if racha_actual >= _siguiente_hito_racha:
+		_siguiente_hito_racha += racha_para_reducir
+		_requeridas_actual = max(pulsaciones_minimas, _requeridas_actual - reduccion_racha)
+	aula.actualizar_racha(racha_actual, _requeridas_actual)
+
+
+## Llamado cuando se le da un machete a un companero que no estaba atento
+## (estado "rojo" = no disponible): la racha vuelve a 0 y los clicks para
+## crear el proximo set vuelven al valor base (30).
+func _resetear_racha() -> void:
+	racha_actual = 0
+	_siguiente_hito_racha = racha_para_reducir
+	_requeridas_actual = _requeridas_base
+	aula.actualizar_racha(racha_actual, _requeridas_actual)
 
 
 ## --- Extension (bancos laterales como puente) ---
@@ -275,6 +346,7 @@ func _volver_a_esperar() -> void:
 ## se reparte a un destino real desde este nuevo origen.
 func _iniciar_control_extension(banco: Companero) -> void:
 	_companero_controlado = banco
+	banco.congelar_extension()
 	estado = Estado.CONTROLANDO_EXTENSION
 	direccion_actual = -1
 	var delta_grilla := _delta_grilla_de_direccion(Companero.Direccion.DERECHA)
@@ -307,17 +379,18 @@ func _procesar_extension() -> void:
 
 
 ## Calcula y pinta el cursor cuando el origen de apuntado es un banco lateral.
-## El destino es una posicion de grilla a 180px del origen; si en esa posicion
-## hay un banco valido y distinto del nene original, se apunta a el.
+## El destino es una posicion de grilla a 180px del origen. Si ahi hay un banco
+## valido se apunta a el. Si el destino es el nene del medio (el original), el
+## cursor se muestra sobre el como "devolucion" permitida (el jugador puede
+## devolverle el machete y soltar el control).
 func _actualizar_cursor_extension(delta: Vector2) -> void:
 	var origen := _companero_controlado.position
 	var destino := origen + delta * 180.0
 
-	# Excluye al nene original (el centro), que nunca es alcanzable desde
-	# una extension.
+	# Destino = nene original (centro): devolucion valida.
 	if destino == position:
-		cursor.position = _companero_controlado.position - position
-		cursor.actualizar(false)
+		cursor.position = Vector2.ZERO
+		cursor.actualizar(true)
 		return
 
 	var objetivo := aula.obtener_companero_en_posicion(destino)
@@ -345,7 +418,9 @@ func _intentar_lanzar_extension() -> void:
 	var delta := _delta_grilla_de_direccion(direccion_actual)
 	var destino := _companero_controlado.position + delta * 180.0
 	if destino == position:
-		_error_lanzamiento()
+		# Devuelve el machete al nene del medio: no se descuenta ni se pierde,
+		# simplemente se suelta el control y se vuelve a apuntar desde el centro.
+		_devolver_machete()
 		_terminar_extension()
 		return
 
@@ -364,11 +439,19 @@ func _intentar_lanzar_extension() -> void:
 	_terminar_extension()
 
 
+## El jugador suelta el control y devuelve el machete al nene original: el
+## machete vuelve al set en mano sin descuento.
+func _devolver_machete() -> void:
+	aula.registrar_devolucion()
+
+
 ## Vuelve a apuntar desde el nene del medio (centro). Se llama al terminar
 ## un lanzamiento hecho desde una extension, o si el banco controlado deja
 ## de ser valido. Si el set de machetes ya quedo vacio (el descuento mando al
 ## jugador de vuelta a ESPERANDO), no se fuerza el APUNTANDO.
 func _terminar_extension() -> void:
+	if is_instance_valid(_companero_controlado):
+		_companero_controlado.liberar_control()
 	_companero_controlado = null
 	if machetes_en_mano <= 0:
 		cursor.visible = false
@@ -427,7 +510,12 @@ func _ganar() -> void:
 	cursor.visible = false
 	Fx.color(visual, COLOR_GANO, 0.4)
 	aula.mostrar_mensaje_fin("GANASTE")
-	_reiniciar_tras_pausa()
+	# Si hay un nivel siguiente configurado, se avanza a el; si no, se
+	# reinicia este mismo nivel.
+	if aula.tiene_siguiente_escena():
+		aula.transicionar_nivel()
+	else:
+		_reiniciar_tras_pausa()
 
 
 ## Congela todo el juego (get_tree().paused detiene el _process de todos

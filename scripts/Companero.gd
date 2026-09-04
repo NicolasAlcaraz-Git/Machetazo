@@ -102,6 +102,11 @@ var machetes_recibidos: int = 0
 
 var _tiempo_restante: float = 0.0
 
+## Mientras el jugador esta controlando este banco lateral como puente
+## (Jugador.CONTROLANDO_EXTENSION), el banco se congela en azul para que no
+## siga variando de color hasta que el machete se entregue o se devuelva.
+var bajo_control: bool = false
+
 
 func _ready() -> void:
 	_actualizar_color()
@@ -140,13 +145,33 @@ func activar_extension() -> void:
 	_tiempo_restante = duracion_extension
 
 
+## Llamado por Jugador.gd cuando toma control de este banco lateral: lo
+## "congela" en azul para que no siga variando hasta entregar/devolver el
+## machete que se le paso como puente.
+func congelar_extension() -> void:
+	bajo_control = true
+	estado = Estado.EXTENSION
+	_tiempo_restante = INF
+
+
+## Llamado por Jugador.gd al terminar el control (entregado o devuelto).
+## Libera el banco y lo vuelve a gris; el director podra activarlo de nuevo
+## como puente mas adelante.
+func liberar_control() -> void:
+	bajo_control = false
+	desactivar()
+
+
 ## Llamado por Aula.gd en cada frame, pero SOLO mientras este companero
 ## esta activo. Avanza su propia mini-secuencia interna:
 ##   normal:    PREPARADO -> ADVERTENCIA -> DISTRAIDO
 ##   extension: EXTENSION -> DISTRAIDO
 ## y el cooldown de OCUPADO -> DISTRAIDO.
+## Mientras el banco este "bajo control", no avanza: se mantiene azul.
 func avanzar(delta: float) -> void:
 	if estado == Estado.DISTRAIDO:
+		return
+	if bajo_control:
 		return
 
 	_tiempo_restante -= delta
@@ -182,7 +207,7 @@ func _con_variacion(base: float) -> float:
 func _actualizar_color() -> void:
 	if not is_instance_valid(visual):
 		return
-	if esta_agotado():
+	if esta_agotado() and estado != Estado.EXTENSION:   # <-- esta es la línea que cambia
 		Fx.color(visual, COLOR_AGOTADO)
 		return
 	var color: Color
