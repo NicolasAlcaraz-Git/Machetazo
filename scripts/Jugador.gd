@@ -245,6 +245,10 @@ func _intentar_lanzar() -> void:
 		_golpe_a_companero(companero)
 		return
 
+	if aula.companero_bloqueado_por_buchon(companero):
+		_perder()
+		return
+
 	_lanzamiento_exitoso(companero)
 
 
@@ -432,6 +436,11 @@ func _intentar_lanzar_extension() -> void:
 
 	if not objetivo.esta_disponible():
 		_golpe_a_companero(objetivo)
+		_terminar_extension()
+		return
+
+	if aula.companero_bloqueado_por_buchon(objetivo):
+		_perder()
 		_terminar_extension()
 		return
 

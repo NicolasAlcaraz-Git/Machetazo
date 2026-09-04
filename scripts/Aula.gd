@@ -24,6 +24,7 @@ class_name Aula
 @onready var profesora: Profesora = $Profesora
 
 var companeros: Array[Companero] = []
+var buchon: Buchon = null
 var label_fin: Label
 var label_en_mano: Label
 var label_racha: Label
@@ -82,7 +83,9 @@ var _entregas_exitosas: int = 0
 
 func _ready() -> void:
 	for hijo in $Companeros.get_children():
-		if hijo is Companero:
+		if hijo is Buchon:
+			buchon = hijo
+		elif hijo is Companero:
 			hijo.desactivar()
 			companeros.append(hijo)
 
@@ -385,6 +388,14 @@ func obtener_companero_en_posicion(pos: Vector2) -> Companero:
 		if companero.position.distance_to(pos) <= tolerancia:
 			return companero
 	return null
+
+
+## True si el companero esta bloqueado por el buchon (si hay un buchon activo
+## y mirando hacia el lado del companero).
+func companero_bloqueado_por_buchon(companero: Companero) -> bool:
+	if buchon == null:
+		return false
+	return buchon.esta_bloqueando_companero(companero)
 
 
 ## Sombra suave en un label para mejorar la legibilidad sobre el fondo.
