@@ -15,15 +15,15 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Machetazo"
-config/description="Prototipo de primer nivel - preproduccion de videojuego 2D"
-run/main_scene="res://scenes/Aula.tscn"
+config/description="Prototipo con seleccion de nivel - preproduccion de videojuego 2D"
+run/main_scene="res://scenes/MenuNiveles.tscn"
 config/features=PackedStringArray("4.8", "GL Compatibility")
 
 [display]
 
 window/size/viewport_width=1024
 window/size/viewport_height=768
-window/size/mode=3
+window/size/mode=2
 window/stretch/mode="canvas_items"
 
 [input]

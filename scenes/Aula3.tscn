@@ -7,6 +7,7 @@
 
 [node name="Aula" type="Node2D" unique_id=1301940336]
 script = ExtResource("1")
+siguiente_escena = "res://scenes/MenuNiveles.tscn"
 maximo_simultaneos = 6
 pausa_entre_activaciones_min = 0.8
 pausa_entre_activaciones_max = 2.8

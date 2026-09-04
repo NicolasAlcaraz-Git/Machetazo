@@ -27,6 +27,8 @@ text = "MACHETES ENTREGADOS: 0 / 5"
 
 [node name="Profesora" parent="." unique_id=1339524997 instance=ExtResource("3")]
 position = Vector2(0, -320)
+variacion_no_mira = 2.0
+variacion_mira = 0.0
 
 [node name="Jugador" parent="." unique_id=559416904 instance=ExtResource("2")]
 position = Vector2(0, 60)
