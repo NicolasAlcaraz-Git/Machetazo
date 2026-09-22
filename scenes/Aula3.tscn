@@ -13,6 +13,7 @@ pausa_entre_activaciones_max = 2.8
 siguiente_escena = "res://scenes/Aula.tscn"
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=606964093]
+layer = 2
 
 [node name="LabelTiempo" type="Label" parent="HUD" unique_id=382880549]
 offset_left = 20.0
@@ -33,7 +34,8 @@ position = Vector2(0, -320)
 
 [node name="Jugador" parent="." unique_id=559416904 instance=ExtResource("2")]
 position = Vector2(0, 60)
-decaimiento_por_segundo = 5.0
+deadzone_palanca = 0.3
+decaimiento_por_segundo = 4.0
 
 [node name="Companeros" type="Node2D" parent="." unique_id=2089303573]
 

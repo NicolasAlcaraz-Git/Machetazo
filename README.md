@@ -47,13 +47,13 @@ los niveles y el sistema de rachas/temporizador.
 - Hay **3 niveles jugables**, todos con la misma mecánica base (masheo +
   apuntado 8 direcciones + entrega de machetes), y cada uno agrega algo:
   - **Nivel 1** (`Aula.tscn`): aula clásica, 8 compañeros en grilla 3x3.
-    Introducción a la mecánica, sin buchón ni extensiones.
+	Introducción a la mecánica, sin buchón ni extensiones.
   - **Nivel 2** (`Aula2.tscn`): igual que el nivel 1 pero entra el
-    **buchón**, que vigila el banco de abajo y bloquea a compañeros de la
-    fila inferior mientras mira.
+	**buchón**, que vigila el banco de abajo y bloquea a compañeros de la
+	fila inferior mientras mira.
   - **Nivel 3** (`Aula3.tscn`): aula grande, 13 bancos, activaciones más
-    frecuentes (más simultáneos y menos pausa) y los bancos laterales
-    "de extensión" que permiten repartir machetes a los bancos extra.
+	frecuentes (más simultáneos y menos pausa) y los bancos laterales
+	"de extensión" que permiten repartir machetes a los bancos extra.
 - **Meta del nivel**: entregar los machetes que necesita cada compañero
   (2 por defecto). Cuando todos quedan agotados, se gana. Si el tiempo llega
   a 0 antes, se pierde.

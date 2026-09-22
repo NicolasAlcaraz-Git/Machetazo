@@ -97,6 +97,10 @@ var _partida_terminada: bool = false
 ## el estado CONTROLANDO_EXTENSION. null en cualquier otro estado.
 var _companero_controlado: Companero = null
 
+## Tween del destello azul que se dispara con cada pulsacion al crear un
+## machete. Se cancela y reinicia en cada click para que no se acumulen.
+var _tween_destello: Tween = null
+
 
 func _ready() -> void:
 	_requeridas_base = pulsaciones_para_crear
@@ -137,6 +141,7 @@ func _procesar_creacion(delta: float) -> void:
 		_tiempo_sin_pulsar = 0.0
 		estado = Estado.CREANDO
 		aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+		_destello_creacion()
 		if contador_machete >= _requeridas_actual:
 			_terminar_creacion()
 		return
@@ -153,6 +158,20 @@ func _procesar_creacion(delta: float) -> void:
 				_decaimiento_acumulado -= float(bajar)
 				contador_machete = max(0, contador_machete - bajar)
 				aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+
+
+## Destello visual en el jugador con cada pulsacion valida al crear un
+## machete: el sprite pasa a un azul claro (casi blanco) y vuelve rapido a
+## COLOR_NORMAL, senalando que la accion del jugador es la que sube la barra.
+## Solo se llama desde _procesar_creacion: apretar "accion" para lanzar o en
+## los menus no genera este efecto.
+func _destello_creacion() -> void:
+	if _tween_destello != null and _tween_destello.is_valid():
+		_tween_destello.kill()
+	visual.modulate = Color(0.7, 0.9, 1.0, 1.0)
+	_tween_destello = create_tween()
+	_tween_destello.tween_property(visual, "modulate", COLOR_NORMAL, 0.14)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _terminar_creacion() -> void:
@@ -516,6 +535,8 @@ func _perder() -> void:
 		return
 	_partida_terminada = true
 	cursor.visible = false
+	if _tween_destello != null and _tween_destello.is_valid():
+		_tween_destello.kill()
 	visual.modulate = COLOR_PERDIO
 	aula.mostrar_fin_partida("PERDISTE", false)
 
@@ -525,5 +546,7 @@ func _ganar() -> void:
 		return
 	_partida_terminada = true
 	cursor.visible = false
+	if _tween_destello != null and _tween_destello.is_valid():
+		_tween_destello.kill()
 	visual.modulate = COLOR_GANO
 	aula.mostrar_fin_partida("GANASTE", true)

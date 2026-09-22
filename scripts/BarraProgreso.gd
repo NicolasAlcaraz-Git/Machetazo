@@ -7,7 +7,7 @@ class_name BarraProgreso
 ## interpola suavemente y la barra soporta segmentos (marcas del set).
 
 @export var color_fondo: Color = Color(0.12, 0.12, 0.14, 0.85)
-@export var color_relleno: Color = Color(0.85, 0.2, 0.2, 1.0)
+@export var color_relleno: Color = Color(0.2, 0.5, 0.9, 1.0)
 @export var color_borde: Color = Color(1, 1, 1, 0.55)
 @export var color_segmento: Color = Color(0, 0, 0, 0.4)
 

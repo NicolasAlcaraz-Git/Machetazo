@@ -19,11 +19,15 @@ config/description="Prototipo con seleccion de nivel - preproduccion de videojue
 run/main_scene="res://scenes/MenuNiveles.tscn"
 config/features=PackedStringArray("4.8", "GL Compatibility")
 
+[autoload]
+
+DifuminadoBordes="*res://scripts/DifuminadoBordes.gd"
+
 [display]
 
 window/size/viewport_width=1024
 window/size/viewport_height=768
-window/size/mode=2
+window/size/mode=3
 window/stretch/mode="canvas_items"
 
 [input]

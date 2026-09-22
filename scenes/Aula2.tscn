@@ -11,6 +11,7 @@ script = ExtResource("1")
 siguiente_escena = "res://scenes/Aula3.tscn"
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1470094867]
+layer = 2
 
 [node name="LabelTiempo" type="Label" parent="HUD" unique_id=10596551]
 offset_left = 20.0
@@ -29,13 +30,12 @@ text = "MACHETES ENTREGADOS: 0 / 5"
 [node name="Profesora" parent="." unique_id=1782969583 instance=ExtResource("3")]
 position = Vector2(0, -320)
 duracion_no_mira = 6.0
-variacion_no_mira = 1.0
-variacion_mira = 1.0
 gracia_mira = 0.3
 
 [node name="Jugador" parent="." unique_id=931383188 instance=ExtResource("2")]
 position = Vector2(0, 60)
-decaimiento_por_segundo = 5.0
+deadzone_palanca = 0.3
+decaimiento_por_segundo = 4.0
 
 [node name="Companeros" type="Node2D" parent="." unique_id=897536975]
 
@@ -64,7 +64,7 @@ direccion = 6
 
 [node name="Buchon" parent="Companeros" unique_id=1721631334 instance=ExtResource("5")]
 position = Vector2(0, 220)
-duracion_no_mira = 8.0
+duracion_no_mira = 7.0
 duracion_mira = 2.0
 variacion_no_mira = 0.0
 variacion_mira = 0.0
