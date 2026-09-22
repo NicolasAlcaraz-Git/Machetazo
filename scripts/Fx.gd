@@ -53,3 +53,18 @@ static func respirar(nodo: Node2D, amplitud: float = 0.04, duracion: float = 1.3
 	tween.tween_property(nodo, "scale", base * (1.0 + amplitud), duracion)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	return tween
+
+
+## Respiracion identica a respirar() pero para nodos Control (Label, Panel...),
+## que tambien tienen "scale" pero no son Node2D. Se usa en el menu para darle
+## el mismo "latido" del juego al subtitulo.
+static func respirar_control(nodo: Control, amplitud: float = 0.04, duracion: float = 1.3) -> Tween:
+	if nodo == null or not is_instance_valid(nodo):
+		return null
+	var base := nodo.scale
+	var tween := nodo.create_tween().set_loops()
+	tween.tween_property(nodo, "scale", base * (1.0 - amplitud), duracion)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(nodo, "scale", base * (1.0 + amplitud), duracion)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return tween

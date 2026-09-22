@@ -42,9 +42,6 @@ const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 ## (el cursor vuelve al centro).
 @export var deadzone_palanca: float = 0.35
 
-## Cuanto tarda en reiniciarse el nivel despues de ganar o perder.
-@export var tiempo_reinicio: float = 2.5
-
 ## Cuanto decae el contador por segundo mientras el jugador no esta pulsando
 ## el boton (en "pulsaciones" por segundo). 0 = sin decaimiento.
 @export var decaimiento_por_segundo: float = 8.0
@@ -217,12 +214,6 @@ func _direccion_desde_vector(v: Vector2) -> int:
 
 
 func _intentar_lanzar() -> void:
-	# Caso 3 del documento: lanzar justo cuando la profesora mira es
-	# derrota inmediata, sin importar si el objetivo era valido o no.
-	if aula.profesora.esta_mirando():
-		_perder()
-		return
-
 	if direccion_actual == -1:
 		# Cursor en el centro (sin direccion): no lanzar ni penalizar. El
 		# jugador puede seguir masheando sin perder el machete ni la mira.
@@ -230,23 +221,37 @@ func _intentar_lanzar() -> void:
 
 	var companero := aula.obtener_companero_en(direccion_actual)
 	if companero == null:
-		_error_lanzamiento()
+		# La mira esta sobre el propio jugador (direccion sin ningun companero,
+		# p. ej. hacia el buchon en el nivel 2): NO se puede lanzar el machete
+		# a uno mismo. La pulsacion se ignora por completo: sin derrota ni
+		# penalizacion de tiempo ni desperdicio de machete.
 		return
 
-	# Si el objetivo es un banco lateral en azul (EXTENSION), el jugador NO le
+	# Caso 3 del documento: lanzar justo cuando la profesora mira es
+	# derrota inmediata, sin importar si el objetivo era valido o no.
+	# (Solo aplica a lanzamientos reales hacia un companero, ver arriba.)
+	if aula.profesora.esta_mirando():
+		_perder()
+		return
+
+	# El buchon detecta ANTES de la disponibilidad y de la extension: si el
+	# companero esta dentro de su cono de vision, lanzarle un machete es
+	# derrota inmediata SIEMPRE, aun si esta distraido u ocupado.
+	if aula.companero_bloqueado_por_buchon(companero):
+		_perder()
+		return
+
+	# Si el objetivo es un banco lateral de extension, el jugador NUNCA le
 	# entrega el machete: pasa a CONTROLARLO para poder repartir a los bancos
-	# extra de ese lado. El machete de "control" no se descuenta del set ni
-	# cuenta como entrega para ese companero.
-	if companero.es_extension and companero.estado == Companero.Estado.EXTENSION:
+	# extra de ese lado. Las extensiones son azules permanentes, asi que esto
+	# aplica siempre. El machete de "control" no se descuenta del set ni cuenta
+	# como entrega para ese companero.
+	if companero.es_extension:
 		_iniciar_control_extension(companero)
 		return
 
 	if not companero.esta_disponible():
 		_golpe_a_companero(companero)
-		return
-
-	if aula.companero_bloqueado_por_buchon(companero):
-		_perder()
 		return
 
 	_lanzamiento_exitoso(companero)
@@ -407,10 +412,6 @@ func _actualizar_cursor_extension(delta: Vector2) -> void:
 
 
 func _intentar_lanzar_extension() -> void:
-	if aula.profesora.esta_mirando():
-		_perder()
-		return
-
 	if not is_instance_valid(_companero_controlado):
 		_terminar_extension()
 		return
@@ -424,8 +425,16 @@ func _intentar_lanzar_extension() -> void:
 	if destino == position:
 		# Devuelve el machete al nene del medio: no se descuenta ni se pierde,
 		# simplemente se suelta el control y se vuelve a apuntar desde el centro.
+		# Esta devolucion NUNCA es derrota, ni siquiera con la profesora mirando:
+		# el riesgo solo aplica a los lanzamientos reales hacia un objetivo.
 		_devolver_machete()
 		_terminar_extension()
+		return
+
+	# Recien aca es un lanzamiento real: la profesora mirando es derrota
+	# inmediata, sin importar si el objetivo era valido o no.
+	if aula.profesora.esta_mirando():
+		_perder()
 		return
 
 	var objetivo := aula.obtener_companero_en_posicion(destino)
@@ -434,13 +443,13 @@ func _intentar_lanzar_extension() -> void:
 		_terminar_extension()
 		return
 
-	if not objetivo.esta_disponible():
-		_golpe_a_companero(objetivo)
+	if aula.companero_bloqueado_por_buchon(objetivo):
+		_perder()
 		_terminar_extension()
 		return
 
-	if aula.companero_bloqueado_por_buchon(objetivo):
-		_perder()
+	if not objetivo.esta_disponible():
+		_golpe_a_companero(objetivo)
 		_terminar_extension()
 		return
 
@@ -507,9 +516,8 @@ func _perder() -> void:
 		return
 	_partida_terminada = true
 	cursor.visible = false
-	Fx.color(visual, COLOR_PERDIO, 0.4)
-	aula.mostrar_mensaje_fin("PERDISTE")
-	_reiniciar_tras_pausa()
+	visual.modulate = COLOR_PERDIO
+	aula.mostrar_fin_partida("PERDISTE", false)
 
 
 func _ganar() -> void:
@@ -517,36 +525,5 @@ func _ganar() -> void:
 		return
 	_partida_terminada = true
 	cursor.visible = false
-	Fx.color(visual, COLOR_GANO, 0.4)
-	aula.mostrar_mensaje_fin("GANASTE")
-	# Si hay un nivel siguiente configurado, se avanza a el; si no, se
-	# reinicia este mismo nivel.
-	if aula.tiene_siguiente_escena():
-		aula.transicionar_nivel()
-	else:
-		_reiniciar_tras_pausa()
-
-
-## Congela todo el juego (get_tree().paused detiene el _process de todos
-## los nodos: companeros, profesora, jugador) y, pasado tiempo_reinicio
-## segundos de tiempo REAL (el timer sigue corriendo aunque este pausado),
-## recarga la escena entera: reinicia tiempo, machetes, ciclos, todo.
-## Antes de recargar, funde la pantalla a negro (fade) para que el reinicio
-## no sea brusco.
-func _reiniciar_tras_pausa() -> void:
-	get_tree().paused = true
-
-	var hud: CanvasLayer = aula.get_node("HUD")
-	var overlay := ColorRect.new()
-	overlay.name = "FadeReinicio"
-	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	overlay.color = Color(0, 0, 0, 0)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hud.add_child(overlay)
-	var tween := overlay.create_tween()
-	tween.tween_property(overlay, "color:a", 1.0, 0.5)
-
-	await get_tree().create_timer(tiempo_reinicio).timeout
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+	visual.modulate = COLOR_GANO
+	aula.mostrar_fin_partida("GANASTE", true)

@@ -14,16 +14,16 @@ siguiente_escena = "res://scenes/Aula3.tscn"
 
 [node name="LabelTiempo" type="Label" parent="HUD" unique_id=10596551]
 offset_left = 20.0
-offset_top = 20.0
-offset_right = 260.0
-offset_bottom = 50.0
+offset_top = 14.0
+offset_right = 380.0
+offset_bottom = 56.0
 text = "TIEMPO: 60"
 
 [node name="LabelMachetes" type="Label" parent="HUD" unique_id=1824070931]
 offset_left = 20.0
-offset_top = 50.0
-offset_right = 300.0
-offset_bottom = 80.0
+offset_top = 60.0
+offset_right = 640.0
+offset_bottom = 102.0
 text = "MACHETES ENTREGADOS: 0 / 5"
 
 [node name="Profesora" parent="." unique_id=1782969583 instance=ExtResource("3")]

@@ -13,10 +13,10 @@ enum Estado {
 	MIRA,        ## Rojo: bloquea companeros de un lado.
 }
 
-const COLOR_NO_MIRA := Color(0.25, 0.8, 0.35)
+const COLOR_NO_MIRA := Color(1, 1, 1)
 const COLOR_ADVERTENCIA := Color(0.95, 0.85, 0.2)
 const COLOR_MIRA := Color(0.85, 0.2, 0.2)
-const COLOR_VERDE := Color(0.25, 0.8, 0.35)
+const COLOR_VERDE := Color(1, 1, 1)
 const COLOR_BLOQUEADO := Color(0.85, 0.3, 0.3, 0.7)
 
 @export var duracion_no_mira: float = 5.0
@@ -45,9 +45,14 @@ var _parpadeo_omega: float = 12.6
 var mira_izquierda: bool = true
 var _gracia_mira: float = 0.0
 
+## Historial de los ultimos lados mirados (true = izquierda, false = derecha).
+## Se usa para evitar que el buchon mire muchas veces seguidas al mismo lado
+## (ver _elegir_lado).
+var _ultimas_miradas: Array[bool] = []
+
 
 func _ready() -> void:
-	mira_izquierda = randf() < 0.5
+	mira_izquierda = _elegir_lado()
 	estado = Estado.NO_MIRA
 	_actualizar_color()
 	_tiempo_restante = max(0.5, tiempo_inicial_quieto)
@@ -78,12 +83,27 @@ func _avanzar_estado() -> void:
 			_tiempo_restante += duracion_advertencia
 		Estado.ADVERTENCIA:
 			estado = Estado.MIRA
-			mira_izquierda = randf() < 0.5
+			mira_izquierda = _elegir_lado()
 			_gracia_mira = gracia_mira
 			_tiempo_restante += _duracion_con_variacion(Estado.MIRA)
 		Estado.MIRA:
 			estado = Estado.NO_MIRA
 			_tiempo_restante += _duracion_con_variacion(Estado.NO_MIRA)
+
+
+## Elige a que lado mira el buchon evitando rachas largas hacia el mismo lado.
+## Si las dos ultimas miradas fueron al mismo lado, la proxima se fuerza al
+## lado contrario (sin importar el 50-50), asi nunca mira mas de 2 veces
+## seguidas para el mismo lado.
+func _elegir_lado() -> bool:
+	var lado := randf() < 0.5
+	if _ultimas_miradas.size() >= 2 \
+		and _ultimas_miradas[-1] == _ultimas_miradas[-2]:
+		lado = not _ultimas_miradas[-1]
+	_ultimas_miradas.append(lado)
+	if _ultimas_miradas.size() > 3:
+		_ultimas_miradas.pop_front()
+	return lado
 
 
 func _duracion_con_variacion(valor: Estado) -> float:

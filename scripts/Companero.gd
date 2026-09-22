@@ -13,12 +13,12 @@ class_name Companero
 ## Este script solo sabe: (a) que color mostrar segun su estado, y (b) una
 ## vez activado, cuanto dura cada fase de SU propia ventana.
 ##
-## Ademas, los dos bancos laterales del jugador (IZQUIERDA y DERECHA) pueden
-## funcionar como "extensiones": ademas de su ciclo normal verde/amarillo,
-## pasan brevemente a azul (EXTENSION_LISTO). Si el jugador les da un machete
-## en azul, pasa a CONTROLAR ese banco (estado del Jugador) y reparte machetes
-## a los 3 bancos extra de su lado. Ese machete de control NO cuenta como
-## machete entregado a este companero.
+## Ademas, los dos bancos laterales del jugador (IZQUIERDA y DERECHA) funcionan
+## como "extensiones" EXCLUSIVAS: estan permanentemente en azul (EXTENSION) y
+## no reciben machetes para si mismos. Si el jugador les da un machete en
+## cualquier momento, pasa a CONTROLAR ese banco (estado del Jugador) y reparte
+## machetes a los 3 bancos extra de su lado. Ese machete de control NO cuenta
+## como machete entregado a este companero.
 
 enum Direccion {
 	ARRIBA,          ## 0
@@ -55,8 +55,9 @@ const COLOR_AGOTADO := Color(1, 1, 1)
 @export var direccion: Direccion = Direccion.ARRIBA
 
 ## Marca a este companero como uno de los DOS bancos laterales que sirven de
-## "extension" del jugador (ver cabecera). Estos, ademas de su ciclo normal,
-## pasan a azul (EXTENSION) para poder ser controlados como puente.
+## "extension" del jugador (ver cabecera). Estos estan SIEMPRE en azul
+## (EXTENSION): no tienen ciclo verde/amarillo propio ni reciben machetes para
+## si mismos. Solo se pueden controlar como puente hacia los bancos extra.
 @export var es_extension: bool = false
 
 ## Duracion de CADA fase de la ventana de este companero en particular
@@ -67,18 +68,14 @@ const COLOR_AGOTADO := Color(1, 1, 1)
 
 ## Variacion aleatoria (+/- segundos) sobre la duracion del PREPARADO
 ## (verde). El ADVERTENCIA (amarillo) NO varia: siempre dura lo mismo.
+## (Este valor no aplica a los companeros de extension, que no tienen ciclo.)
 @export var variacion_aleatoria: float = 2.5
-
-## Duracion fija (segundos) del estado EXTENSION (azul) para los bancos
-## laterales. Es FIJA a proposito: el azul, igual que el amarillo, siempre
-## dura lo mismo para que el jugador sepa exactamente cuanto le queda antes
-## de que el puente vuelva a gris.
-@export var duracion_extension: float = 2.5
 
 ## Cuantos machetes necesita este companero antes de quedar "agotado"
 ## (ya no vuelve a estar disponible para el resto del nivel). Los machetes
 ## de "control" usados para pasear la palanca hacia los bancos extra NO
-## cuentan para este total (ver Jugador.gd).
+## cuentan para este total (ver Jugador.gd). Los companeros de extension
+## nunca se agotan: no reciben machetes para si mismos.
 @export var machetes_necesarios: int = 3
 
 ## Duracion (segundos) del estado OCUPADO: el companero esta "copiando" el
@@ -109,7 +106,13 @@ var bajo_control: bool = false
 
 
 func _ready() -> void:
-	_actualizar_color()
+	if es_extension:
+		# Los bancos de extension estan permanentemente en azul: no esperan una
+		# ventana del director, nunca se apagan y siempre pueden controlarse.
+		estado = Estado.EXTENSION
+		_tiempo_restante = INF
+	else:
+		_actualizar_color()
 
 
 ## Llamado por Jugador.gd cuando le entrega un machete exitosamente.
@@ -137,14 +140,6 @@ func activar() -> void:
 	_tiempo_restante = _con_variacion(duracion_preparado)
 
 
-## Llamado por Aula.gd cuando este companero (banco lateral de extension)
-## entra en modo puente (azul). Si estaba en medio de su ventana normal,
-## se cancela para pasar a azul.
-func activar_extension() -> void:
-	estado = Estado.EXTENSION
-	_tiempo_restante = duracion_extension
-
-
 ## Llamado por Jugador.gd cuando toma control de este banco lateral: lo
 ## "congela" en azul para que no siga variando hasta entregar/devolver el
 ## machete que se le paso como puente.
@@ -155,8 +150,8 @@ func congelar_extension() -> void:
 
 
 ## Llamado por Jugador.gd al terminar el control (entregado o devuelto).
-## Libera el banco y lo vuelve a gris; el director podra activarlo de nuevo
-## como puente mas adelante.
+## Libera el banco; como las extensiones son azules permanentes, vuelve a
+## quedar inmediatamente disponible como puente.
 func liberar_control() -> void:
 	bajo_control = false
 	desactivar()
@@ -164,9 +159,11 @@ func liberar_control() -> void:
 
 ## Llamado por Aula.gd en cada frame, pero SOLO mientras este companero
 ## esta activo. Avanza su propia mini-secuencia interna:
-##   normal:    PREPARADO -> ADVERTENCIA -> DISTRAIDO
-##   extension: EXTENSION -> DISTRAIDO
+##   normal: PREPARADO -> ADVERTENCIA -> DISTRAIDO
 ## y el cooldown de OCUPADO -> DISTRAIDO.
+## Los companeros de extension son permanentes: nunca entran en esta lista
+## (desactivar() los mantiene en azul) y pasado su cooldown de control
+## vuelven al azul.
 ## Mientras el banco este "bajo control", no avanza: se mantiene azul.
 func avanzar(delta: float) -> void:
 	if estado == Estado.DISTRAIDO:
@@ -194,7 +191,11 @@ func avanzar(delta: float) -> void:
 
 func desactivar() -> void:
 	_tiempo_restante = 0.0
-	estado = Estado.DISTRAIDO
+	# Los companeros de extension son azules permanentes: nunca vuelven a gris.
+	if es_extension:
+		estado = Estado.EXTENSION
+	else:
+		estado = Estado.DISTRAIDO
 	queue_redraw() # limpia el anillo de cooldown
 
 
@@ -245,6 +246,10 @@ func _draw() -> void:
 ## validos. Un companero agotado nunca es valido. Un companero OCUPADO
 ## (copiando) tampoco puede recibir otro machete todavia.
 func esta_disponible() -> bool:
+	# Un companero de extension esta SIEMPRE disponible como puente: es azul
+	# permanente y puede controlarse en cualquier momento.
+	if es_extension:
+		return true
 	if esta_agotado():
 		return false
 	if estado == Estado.OCUPADO:

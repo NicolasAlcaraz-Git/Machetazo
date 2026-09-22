@@ -8,8 +8,9 @@ class_name MenuNiveles
 ## companeros, misma logica de temporizador y de fin de partida.
 ##
 ## Ademas de soportar mouse, los botones se manejan con las flechas del
-## teclado (ui_left/ui_right/ui_up/ui_down) y se confirman con ENTER o el
-## boton de accion (ui_accept), tal como se usan en el resto del juego.
+## teclado (ui_left/ui_right/ui_up/ui_down) y se confirman con el boton de
+## accion del juego (accion), el mismo que se usa para mashear y lanzar.
+## Tambien responde a ui_accept (ENTER/Espacio) si se juega con teclado.
 
 const NIVELES = [
 	{
@@ -24,12 +25,16 @@ const NIVELES = [
 	},
 	{
 		"nombre": "NIVEL 3",
-		"detalle": "Aula grande: 14 compañeros",
+		"detalle": "Aula grande: 12 compañeros",
 		"escena": "res://scenes/Aula3.tscn",
 	},
 ]
 
 var _botones: Array[Button] = []
+
+## Evita que una misma pulsacion dispare la carga del nivel dos veces (por
+## ejemplo si el boton reacciona a ui_accept y ademas entra por _input).
+var _cargando: bool = false
 
 
 func _ready() -> void:
@@ -71,7 +76,9 @@ func _crear_titulo() -> void:
 
 	var subtitulo := Label.new()
 	subtitulo.name = "Subtitulo"
-	subtitulo.text = "ELEGI UN NIVEL"
+	subtitulo.text = "SPAMEA EL BOTÓN Y CREA MACHETES PARA
+	AYUDAR A TUS COMPAÑEROS"
+	subtitulo.add_theme_color_override("font_color", Color(0.25, 0.8, 0.35))
 	subtitulo.add_theme_font_size_override("font_size", 26)
 	subtitulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitulo.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -81,6 +88,11 @@ func _crear_titulo() -> void:
 	subtitulo.offset_bottom = 246
 	_aplicar_sombra(subtitulo)
 	add_child(subtitulo)
+	# El subtitulo "late" igual que los companeros y el jugador, para llamar la
+	# atencion y acompañar la lectura. El pivot en el centro hace que el latido
+	# sea simetrico (en vez de crecer desde la esquina superior izquierda).
+	subtitulo.pivot_offset = subtitulo.size / 2.0
+	Fx.respirar_control(subtitulo, 0.05, 1.2)
 
 
 func _crear_botones() -> void:
@@ -121,7 +133,30 @@ func _crear_botones() -> void:
 
 
 func _cargar_nivel(escena: String) -> void:
+	if _cargando:
+		return
+	_cargando = true
 	get_tree().change_scene_to_file(escena)
+
+
+## El menu se confirma con el BOTON DE ACCION del juego (accion), el mismo que
+## se usa para mashear/lanzar en las aulas. El input map solo define "accion"
+## (botones 0 a 3 del pad), asi que el confirm de los botones del menu no podia
+## depender de ui_accept. Tambien se acepta ui_accept (ENTER/Espacio).
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("accion") or event.is_action_pressed("ui_accept"):
+		_confirmar_seleccion()
+
+
+## Confirma el boton que tenga el foco; si no hay ninguno con foco, carga el
+## primer nivel. _cargar_nivel() se encarga de no cargar dos veces.
+func _confirmar_seleccion() -> void:
+	var foco := get_viewport().gui_get_focus_owner()
+	for i in _botones.size():
+		if _botones[i] == foco:
+			_cargar_nivel(NIVELES[i]["escena"])
+			return
+	_cargar_nivel(NIVELES[0]["escena"])
 
 
 func _aplicar_sombra(label: Label) -> void:

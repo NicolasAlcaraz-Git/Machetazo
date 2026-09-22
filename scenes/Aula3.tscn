@@ -7,25 +7,25 @@
 
 [node name="Aula" type="Node2D" unique_id=1301940336]
 script = ExtResource("1")
-siguiente_escena = "res://scenes/MenuNiveles.tscn"
 maximo_simultaneos = 6
 pausa_entre_activaciones_min = 0.8
 pausa_entre_activaciones_max = 2.8
+siguiente_escena = "res://scenes/Aula.tscn"
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=606964093]
 
 [node name="LabelTiempo" type="Label" parent="HUD" unique_id=382880549]
 offset_left = 20.0
-offset_top = 20.0
-offset_right = 260.0
-offset_bottom = 50.0
+offset_top = 14.0
+offset_right = 380.0
+offset_bottom = 56.0
 text = "TIEMPO: 60"
 
 [node name="LabelMachetes" type="Label" parent="HUD" unique_id=231825319]
 offset_left = 20.0
-offset_top = 50.0
-offset_right = 300.0
-offset_bottom = 80.0
+offset_top = 60.0
+offset_right = 640.0
+offset_bottom = 102.0
 text = "MACHETES ENTREGADOS: 0 / 5"
 
 [node name="Profesora" parent="." unique_id=1339524997 instance=ExtResource("3")]

@@ -25,10 +25,29 @@ class_name Aula
 
 var companeros: Array[Companero] = []
 var buchon: Buchon = null
-var label_fin: Label
 var label_en_mano: Label
 var label_racha: Label
 var barra_machete: BarraProgreso
+
+## Fin de partida: cartel, botones y fondo son hijos DIRECTOS del HUD (con
+## coordenadas de pantalla fijas, como el resto de labels del HUD, para que se
+## vean bien en los 3 niveles). overlay_fin es el manejador de FinPartida.gd,
+## un nodo mas del HUD que sigue en pie con el juego PAUSADO: se navega con
+## palanca/flechas y se confirma con el boton de accion (accion) o ui_accept.
+const FinPartidaScript := preload("res://scripts/FinPartida.gd")
+var overlay_fin
+var label_fin: Label
+var btn_seguir: Button
+var btn_menu: Button
+var _fade_fin: ColorRect
+
+## True si se GANO el nivel. Define que hace "SEGUIR JUGANDO": si se gano,
+## avanza al siguiente nivel; si se perdio, reinicia el actual.
+var _es_victoria: bool = false
+
+## True desde que el jugador elige una opcion. Evita dobles disparos (el boton
+## reacciona a ui_accept y ademas los confirmamos por _input).
+var _fin_resuelto: bool = false
 
 ## --- Director de companeros ---
 
@@ -48,16 +67,6 @@ var barra_machete: BarraProgreso
 @export var pausa_entre_activaciones_min: float = 1.5
 @export var pausa_entre_activaciones_max: float = 3.5
 
-## --- Extension (bancos laterales como puente) ---
-
-## Cada cuanto (rango min-max en segundos) se intenta poner un banco lateral
-## en azul (modo puente, ver Companero.activar_extension). El azul que acompaña
-## el ritmo general, ademas del ciclo verde/amarillo normal.
-@export var pausa_extension_min: float = 5.0
-@export var pausa_extension_max: float = 9.0
-
-var _tiempo_para_extension: float = 0.0
-
 var _companeros_activos: Array[Companero] = []
 var _tiempo_para_proxima_activacion: float = 0.0
 
@@ -70,8 +79,10 @@ var _tiempo_para_proxima_activacion: float = 0.0
 ## companero distraido). Ver registrar_error() / registrar_golpe().
 @export var penalizacion_tiempo: float = 5.0
 
-## Ruta de la escena del nivel siguiente ("" = este es el ultimo nivel y se
-## recarga al ganarlo). Al ganar el nivel, el juego carga esta escena.
+## Ruta de la escena del nivel siguiente. Se usa al GANAR y elegir
+## "SEGUIR JUGANDO": avanza a este nivel. Si esta vacio (nivel 3, el ultimo),
+## ganar y seguir jugando vuelve al nivel 1. Perder siempre reinicia el nivel
+## actual, con o sin esta ruta.
 @export var siguiente_escena: String = ""
 
 var _tiempo_restante: float = 0.0
@@ -89,8 +100,25 @@ func _ready() -> void:
 			hijo.desactivar()
 			companeros.append(hijo)
 
+	_fade_fin = _crear_fade_fin()
+	$HUD.add_child(_fade_fin)
+
 	label_fin = _crear_label_fin()
+	_aplicar_sombra(label_fin)
 	$HUD.add_child(label_fin)
+
+	btn_seguir = _crear_boton_fin("SEGUIR JUGANDO", Vector2(332, 604))
+	btn_menu = _crear_boton_fin("VOLVER AL MENU", Vector2(692, 604))
+	$HUD.add_child(btn_seguir)
+	$HUD.add_child(btn_menu)
+	btn_seguir.pressed.connect(_reiniciar_nivel)
+	btn_menu.pressed.connect(_volver_al_menu)
+
+	overlay_fin = FinPartidaScript.new()
+	overlay_fin.name = "OverlayFin"
+	overlay_fin.inicializar(label_fin, btn_seguir, btn_menu, _fade_fin,
+		_reiniciar_nivel, _volver_al_menu)
+	$HUD.add_child(overlay_fin)
 
 	label_en_mano = _crear_label_en_mano()
 	$HUD.add_child(label_en_mano)
@@ -107,14 +135,14 @@ func _ready() -> void:
 	label_machetes.text = "MACHETES ENTREGADOS: 0 / %d" % _meta_machetes()
 	actualizar_en_mano(0, jugador.machetes_por_set)
 
+	label_tiempo.add_theme_font_size_override("font_size", 30)
+	label_machetes.add_theme_font_size_override("font_size", 22)
 	_aplicar_sombra(label_tiempo)
 	_aplicar_sombra(label_machetes)
 	_aplicar_sombra(label_en_mano)
 	_aplicar_sombra(label_racha)
-	_aplicar_sombra(label_fin)
 
 	_tiempo_para_proxima_activacion = tiempo_inicial_quieto
-	_tiempo_para_extension = tiempo_inicial_quieto + 2.0
 
 	_crear_fondo()
 	Fx.respirar(jugador, 0.03, 1.4)
@@ -128,10 +156,6 @@ func _process(delta: float) -> void:
 	_tiempo_para_proxima_activacion -= delta
 	if _tiempo_para_proxima_activacion <= 0.0:
 		_intentar_activar_uno()
-
-	_tiempo_para_extension -= delta
-	if _tiempo_para_extension <= 0.0:
-		_intentar_activar_extension()
 
 	_avanzar_temporizador(delta)
 
@@ -172,26 +196,6 @@ func _intentar_activar_uno() -> void:
 
 	var elegido: Companero = candidatos[randi() % candidatos.size()]
 	elegido.activar()
-	_companeros_activos.append(elegido)
-
-
-## Cada tanto pone en azul (modo puente) a uno de los dos bancos laterales de
-## extension que este distraido y no agotado. Se programa SIEMPRE la proxima
-## pasada, haya o no activado a alguien.
-func _intentar_activar_extension() -> void:
-	_tiempo_para_extension = randf_range(pausa_extension_min, pausa_extension_max)
-
-	var candidatos: Array[Companero] = []
-	for companero in companeros:
-		if companero.es_extension \
-			and companero.estado == Companero.Estado.DISTRAIDO:
-			candidatos.append(companero)
-
-	if candidatos.is_empty():
-		return
-
-	var elegido: Companero = candidatos[randi() % candidatos.size()]
-	elegido.activar_extension()
 	_companeros_activos.append(elegido)
 
 
@@ -241,6 +245,10 @@ func _restar_tiempo(segundos: float) -> void:
 func _meta_machetes() -> int:
 	var total := 0
 	for companero in companeros:
+		# Los bancos de extension no reciben machetes para ellos mismos:
+		# son puentes, no objetivos, y no cuentan para la meta del nivel.
+		if companero.es_extension:
+			continue
 		total += companero.machetes_necesarios
 	return total
 
@@ -258,61 +266,101 @@ func registrar_devolucion() -> void:
 
 func todos_los_companeros_agotados() -> bool:
 	for companero in companeros:
+		if companero.es_extension:
+			continue
 		if not companero.esta_agotado():
 			return false
 	return true
 
 
-## -- Transicion entre niveles --
+## -- Fin de partida (cartel + opciones) --
 
-## True si este nivel tiene una escena siguiente configurada (no es el ultimo).
-func tiene_siguiente_escena() -> bool:
-	return not siguiente_escena.is_empty()
-
-
-## Fade a negro y carga la escena siguiente. Llamado por Jugador.gd cuando se
-## gana el nivel y existe un siguiente.
-func transicionar_nivel() -> void:
+## Muestra el cartel de fin de partida (GANASTE/PERDISTE) y las dos opciones
+## del jugador, y CONGELA el juego hasta que elija una. Llamado por Jugador.gd
+## tanto al ganar (victoria=true) como al perder (victoria=false).
+func mostrar_fin_partida(texto: String, victoria: bool) -> void:
+	_es_victoria = victoria
+	_fin_resuelto = false
+	overlay_fin.mostrar(texto)
+	# El juego queda congelado al instante: el jugador elige, no hay avance
+	# automatico. Solo los nodos PROCESS_MODE_ALWAYS (overlay, cartel, botones,
+	# fondo) siguen vivos.
 	get_tree().paused = true
 
-	var overlay := ColorRect.new()
-	overlay.name = "FadeReinicio"
-	overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	overlay.color = Color(0, 0, 0, 0)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	$HUD.add_child(overlay)
-	var tween := overlay.create_tween()
-	tween.tween_property(overlay, "color:a", 1.0, 0.5)
 
-	await get_tree().create_timer(jugador.tiempo_reinicio).timeout
+## "SEGUIR JUGANDO". Si se PERDIO, reinicia el nivel actual desde cero.
+## Si se GANO, avanza al siguiente nivel; como no hay mas niveles despues del
+## 3, ganas en el 3 y eliges seguir -> se vuelve al nivel 1.
+func _reiniciar_nivel() -> void:
+	if _fin_resuelto:
+		return
+	_fin_resuelto = true
 	get_tree().paused = false
-	get_tree().change_scene_to_file(siguiente_escena)
+	if _es_victoria:
+		if siguiente_escena.is_empty():
+			get_tree().change_scene_to_file("res://scenes/Aula.tscn")
+		else:
+			get_tree().change_scene_to_file(siguiente_escena)
+	else:
+		get_tree().reload_current_scene()
 
 
+## "VOLVER AL MENU": vuelve a la pantalla de seleccion de nivel.
+func _volver_al_menu() -> void:
+	if _fin_resuelto:
+		return
+	_fin_resuelto = true
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/MenuNiveles.tscn")
+
+
+## Cartel central, entre el jugador (abajo) y el companero de arriba. Hijo
+## DIRECTO del HUD para posicionarse con coordenadas de pantalla fijas.
 func _crear_label_fin() -> Label:
 	var label := Label.new()
 	label.name = "LabelFin"
+	label.process_mode = Node.PROCESS_MODE_ALWAYS
 	label.add_theme_font_size_override("font_size", 56)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.set_anchors_preset(Control.PRESET_CENTER)
-	label.offset_left = -300
-	label.offset_right = 300
-	label.offset_top = -40
-	label.offset_bottom = 40
+	_posicionar_centro(label, Vector2(512, 444), Vector2(600, 80))
 	label.visible = false
 	return label
 
 
-## Llamado por Jugador.gd al ganar o perder.
-func mostrar_mensaje_fin(texto: String) -> void:
-	label_fin.text = texto
-	label_fin.visible = true
-	label_fin.scale = Vector2(0.6, 0.6)
-	var tween := label_fin.create_tween()
-	tween.tween_property(label_fin, "scale", Vector2(1.0, 1.0), 0.35)\
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+func _crear_boton_fin(texto: String, centro: Vector2) -> Button:
+	var boton := Button.new()
+	boton.text = texto
+	boton.process_mode = Node.PROCESS_MODE_ALWAYS
+	boton.add_theme_font_size_override("font_size", 22)
+	boton.set_anchors_preset(Control.PRESET_CENTER)
+	_posicionar_centro(boton, centro, Vector2(280, 48))
+	boton.visible = false
+	return boton
+
+
+## Fondo oscurecido del cartel, a pantalla completa.
+func _crear_fade_fin() -> ColorRect:
+	var fade := ColorRect.new()
+	fade.name = "FadeFin"
+	fade.process_mode = Node.PROCESS_MODE_ALWAYS
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade.color = Color(0, 0, 0, 0)
+	fade.visible = false
+	return fade
+
+
+## Centra un Control hijo DIRECTO del HUD en pantalla: PRESET_CENTER ancla al
+## centro del viewport (512, 384) y los offsets se calculan respecto a ese
+## punto, sin depender del tamano del nodo padre.
+func _posicionar_centro(control: Control, centro: Vector2, tam: Vector2) -> void:
+	control.offset_left = centro.x - tam.x / 2.0 - 512.0
+	control.offset_top = centro.y - tam.y / 2.0 - 384.0
+	control.offset_right = control.offset_left + tam.x
+	control.offset_bottom = control.offset_top + tam.y
 
 
 ## Label chico que muestra cuantos machetes quedan en el set actual.
@@ -322,7 +370,7 @@ func _crear_label_en_mano() -> Label:
 	label.add_theme_font_size_override("font_size", 22)
 	label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	label.offset_left = 20
-	label.offset_top = 80
+	label.offset_top = 100
 	return label
 
 
@@ -341,7 +389,7 @@ func _crear_label_racha() -> Label:
 	label.add_theme_font_size_override("font_size", 22)
 	label.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	label.offset_left = 20
-	label.offset_top = 108
+	label.offset_top = 138
 	return label
 
 
