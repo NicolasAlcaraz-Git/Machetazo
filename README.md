@@ -1,9 +1,13 @@
 # Machetazo
 
-Prototipo 2D (Godot 4.8) de preproducción de un videojuego de ritmo/sigilo
-ambientado en un aula: hay que mashear un "machete" (contador de pulsaciones)
-y pasárselo a los compañeros cuando están atentos (verdes) sin que la
-profesora te vea.
+RESUMEN
+"Machetazo" es un videojuego 2D de observación y reacción para PC, pensado para jugarse con una réplica de mando arcade compuesta por 1 palanca de 8 direcciones y 1 único botón de acción. Nuestro primer prototipo utiliza formas geométricas simples de colores diferenciados y una vista cenital picada.
+
+El jugador controla a un estudiante ubicado en el banco central de un aula distribuida en forma de cuadrícula. Lo rodean 8 bancos que corresponden exactamente a las 8 direcciones de la palanca, y frente a todos ellos se encuentra la profesora, inicialmente de espaldas al pizarrón. El objetivo del jugador es fabricar "machetes" (apuntes para copiarse en un examen) y hacérselos llegar a los compañeros que estén atentos y preparados para recibirlos, sin ser descubierto por la profesora, antes de que se agote el tiempo.
+
+Desarrollamos el proyecto como prueba de concepto dentro de la materia "Taller de Diseño de Videojuegos 3" para el "Trabajo Práctico 3: Preproducción de Videojuego 2D". Para esta primera etapa de desarrollo creamos 3 niveles/aulas con el objetivo de validar el loop principal de jugabilidad y presentarlo en instancias de búsqueda de financiamiento e inversión.
+
+Link de descarga al ejecutable: https://drive.google.com/file/d/1ycGYD8WsErSfMeLg9Cqiyz0MLY6vL0jd/view?usp=sharing 
 
 ---
 
@@ -49,13 +53,13 @@ los niveles y el sistema de rachas/temporizador.
   - **Nivel 1** (`Aula.tscn`): aula clásica, 8 compañeros en grilla 3x3.
 	Introducción a la mecánica, sin buchón ni extensiones.
   - **Nivel 2** (`Aula2.tscn`): igual que el nivel 1 pero entra el
-	**buchón**, que vigila el banco de abajo y bloquea a compañeros de la
+	**buchón**, que vigila desde el banco de abajo y bloquea a compañeros de la
 	fila inferior mientras mira.
-  - **Nivel 3** (`Aula3.tscn`): aula grande, 13 bancos, activaciones más
+  - **Nivel 3** (`Aula3.tscn`): aula grande, 15 bancos, activaciones más
 	frecuentes (más simultáneos y menos pausa) y los bancos laterales
 	"de extensión" que permiten repartir machetes a los bancos extra.
 - **Meta del nivel**: entregar los machetes que necesita cada compañero
-  (2 por defecto). Cuando todos quedan agotados, se gana. Si el tiempo llega
+  (2 o 3 por defecto). Cuando todos quedan agotados, se gana. Si el tiempo llega
   a 0 antes, se pierde.
 - Ganas -> siguiente nivel (o menú en el caso del nivel 3). Perdés -> se
   reinicia el nivel actual.
