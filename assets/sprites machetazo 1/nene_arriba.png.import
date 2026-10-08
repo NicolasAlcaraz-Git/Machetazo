@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3nwaacy38ili"
-path="res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"
+uid="uid://cxue3431x3ohk"
+path="res://.godot/imported/nene_arriba.png-0ac793852f8a4f3633dffdd4e7c27e2f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/square_placeholder.png"
-dest_files=["res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"]
+source_file="res://assets/sprites machetazo 1/nene_arriba.png"
+dest_files=["res://.godot/imported/nene_arriba.png-0ac793852f8a4f3633dffdd4e7c27e2f.ctex"]
 
 [params]
 

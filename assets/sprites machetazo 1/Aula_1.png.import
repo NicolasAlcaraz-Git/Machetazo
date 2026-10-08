@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3nwaacy38ili"
-path="res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"
+uid="uid://v7fvpv3ywdjv"
+path="res://.godot/imported/Aula_1.png-fe464063b168c2071039967d37968ab1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/square_placeholder.png"
-dest_files=["res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"]
+source_file="res://assets/sprites machetazo 1/Aula_1.png"
+dest_files=["res://.godot/imported/Aula_1.png-fe464063b168c2071039967d37968ab1.ctex"]
 
 [params]
 

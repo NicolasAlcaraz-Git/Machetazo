@@ -16,6 +16,9 @@ class_name Aula
 ## (2 por defecto, ver Companero.gd) antes de quedar agotado. Cuando los 8
 ## quedan agotados, se gana el nivel. Si se acaba el tiempo antes de eso,
 ## se pierde.
+##
+## Compulsa de entrega (v0.7): los companeros solo abren su ventana cuando el
+## jugador ya tiene machetes en mano. Ver companeros_solo_con_machetes_en_mano.
 
 @onready var label_tiempo: Label = $HUD/LabelTiempo
 @onready var label_machetes: Label = $HUD/LabelMachetes
@@ -26,7 +29,6 @@ class_name Aula
 var companeros: Array[Companero] = []
 var buchon: Buchon = null
 var label_en_mano: Label
-var label_racha: Label
 var barra_machete: BarraProgreso
 
 ## Fin de partida: cartel, botones y fondo son hijos DIRECTOS del HUD (con
@@ -67,8 +69,26 @@ var _fin_resuelto: bool = false
 @export var pausa_entre_activaciones_min: float = 1.5
 @export var pausa_entre_activaciones_max: float = 3.5
 
+## COMPULSA DE ENTREGA (v0.7): los companeros solo abren su ventana
+## (PREPARADO -> ADVERTENCIA) cuando el jugador YA tiene machetes en mano, o
+## sea en la fase de apuntar y entregar. Mientras esta masheando el set
+## (ESPERANDO / CREANDO) todos los companeros quedan en gris y no hay a quien
+## apuntarle, igual que en la fase 1 del tutorial.
+##
+## Al quedarse sin machetes en mano (se entrego el ultimo del set) los que
+## estaban verdes se apagan al instante y arranca la pausa normal del nivel.
+## Asi la ventana verde siempre cae dentro de un tramo en el que el jugador
+## puede aprovecharla, en vez de abrirse mientras todavia no tiene con que
+## lanzarle.
+@export var companeros_solo_con_machetes_en_mano: bool = true
+
 var _companeros_activos: Array[Companero] = []
 var _tiempo_para_proxima_activacion: float = 0.0
+
+## Estado de la compuerta en el frame anterior, para detectar el instante en
+## que el jugador termina de crear un set (0 -> >0) o se queda sin machetes
+## (>0 -> 0) y reaccionar una sola vez.
+var _puede_activar_antes: bool = false
 
 ## --- Temporizador general del nivel ---
 
@@ -87,12 +107,20 @@ var _tiempo_para_proxima_activacion: float = 0.0
 
 var _tiempo_restante: float = 0.0
 
+## --- Tutorial / flags ---
+var is_tutorial: bool = false
+var tutorial_step: int = 0
+var penalties_enabled: bool = true
+
 ## --- Meta del nivel ---
 
 var _entregas_exitosas: int = 0
 
 
 func _ready() -> void:
+	var db = get_node_or_null("DifuminadoBordes")
+	if db != null:
+		db.queue_free()
 	for hijo in $Companeros.get_children():
 		if hijo is Buchon:
 			buchon = hijo
@@ -123,10 +151,6 @@ func _ready() -> void:
 	label_en_mano = _crear_label_en_mano()
 	$HUD.add_child(label_en_mano)
 
-	label_racha = _crear_label_racha()
-	$HUD.add_child(label_racha)
-	label_racha.text = "RACHA: 0"
-
 	barra_machete = _crear_barra_machete()
 	$HUD.add_child(barra_machete)
 
@@ -140,7 +164,6 @@ func _ready() -> void:
 	_aplicar_sombra(label_tiempo)
 	_aplicar_sombra(label_machetes)
 	_aplicar_sombra(label_en_mano)
-	_aplicar_sombra(label_racha)
 
 	_tiempo_para_proxima_activacion = tiempo_inicial_quieto
 
@@ -151,6 +174,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# La compuerta va primero: si el jugador se acaba de quedar sin machetes,
+	# hay que apagar a los verdes ANTES de avanzar sus ventanas, para que no
+	# consuman tiempo de verde/amarillo estando ya apagados.
+	_actualizar_puerta_entrega()
 	_avanzar_companeros_activos(delta)
 
 	_tiempo_para_proxima_activacion -= delta
@@ -158,6 +185,42 @@ func _process(delta: float) -> void:
 		_intentar_activar_uno()
 
 	_avanzar_temporizador(delta)
+
+
+## --- Compulsa de entrega: activacion solo con machetes en mano ---
+##
+## Los companeros no abren ventanas mientras el jugador esta masheando el set
+## (no tiene nada que lanzarles) y se apagan en cuanto se queda sin machetes
+## en mano. Solo reacciona a los cambios de estado, no cada frame.
+
+
+func _actualizar_puerta_entrega() -> void:
+	if not companeros_solo_con_machetes_en_mano:
+		return
+
+	var puede := jugador.machetes_en_mano > 0
+	if puede == _puede_activar_antes:
+		return
+	_puede_activar_antes = puede
+	if puede:
+		# Acaba de completar el set: arranca la pausa NORMAL del nivel, sin
+		# abrir ninguna ventana en el acto. Queda un tramo corto con el set
+		# lleno y todos en gris, que es el tiempo para elegir direccion.
+		_tiempo_para_proxima_activacion = randf_range(
+			pausa_entre_activaciones_min, pausa_entre_activaciones_max
+		)
+	else:
+		_cerrar_puerta()
+
+
+## Se entrego el ultimo machete del set: los companeros que estaban abiertos
+## vuelven a gris de una. desactivar() los manda a DISTRAIDO y deja las
+## extensiones en azul, asi que es el mismo apagado que usa el propio ciclo de
+## cada companero (no hace falta ningun estado visual nuevo).
+func _cerrar_puerta() -> void:
+	for companero in _companeros_activos:
+		companero.desactivar()
+	_companeros_activos.clear()
 
 
 ## --- Director de companeros ---
@@ -178,10 +241,19 @@ func _avanzar_companeros_activos(delta: float) -> void:
 ## SIEMPRE (haya exito o no), y si hay lugar libre, activa a un companero
 ## al azar entre los que estan distraidos, no estan ya activos y no estan
 ## agotados (ya recibieron todos sus machetes).
+## Con la compulsa de entrega activa, ademas exige que el jugador tenga
+## machetes en mano (si no, solo reprograma el proximo intento).
 func _intentar_activar_uno() -> void:
 	_tiempo_para_proxima_activacion = randf_range(
 		pausa_entre_activaciones_min, pausa_entre_activaciones_max
 	)
+
+	# El jugador esta masheando el set: no hay nada que lanzarles todavia, asi
+	# que no se abre ninguna ventana. El proximo intento se programa igual y
+	# la activacion arranca sola cuando tenga machetes en mano (ver
+	# _actualizar_puerta_entrega).
+	if companeros_solo_con_machetes_en_mano and jugador.machetes_en_mano <= 0:
+		return
 
 	if _companeros_activos.size() >= maximo_simultaneos:
 		return # ya hay el maximo permitido, esperamos al proximo intento
@@ -222,6 +294,8 @@ func _actualizar_label_tiempo() -> void:
 ## Resta tiempo por un error (lanzar sin objetivo valido). No tiene
 ## reaccion de la profesora: no habia nadie a quien pegarle.
 func registrar_error() -> void:
+	if not penalties_enabled:
+		return
 	_restar_tiempo(penalizacion_tiempo)
 
 
@@ -229,11 +303,17 @@ func registrar_error() -> void:
 ## machete golpeo a un companero distraido (grito de "auch", ella se da
 ## vuelta). No es derrota inmediata por si sola.
 func registrar_golpe(_companero: Companero) -> void:
-	profesora.forzar_mira()
+	if not penalties_enabled:
+		return
+	if is_instance_valid(profesora):
+		profesora.forzar_mira()
 	_restar_tiempo(penalizacion_tiempo)
 
 
 func _restar_tiempo(segundos: float) -> void:
+	if not penalties_enabled:
+		_actualizar_label_tiempo()
+		return
 	_tiempo_restante = max(0.0, _tiempo_restante - segundos)
 	_actualizar_label_tiempo()
 	if _tiempo_restante <= 0.0:
@@ -380,25 +460,6 @@ func actualizar_en_mano(actual: int, total: int) -> void:
 	label_en_mano.text = "EN MANO: %d / %d" % [actual, total]
 
 
-## Label chico que muestra la racha vigente y los clicks que pide el proximo
-## set. Se actualiza con cada entrega (verde suma/amarillo-azul congela) y se
-## resetea con cada fallo.
-func _crear_label_racha() -> Label:
-	var label := Label.new()
-	label.name = "LabelRacha"
-	label.add_theme_font_size_override("font_size", 22)
-	label.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	label.offset_left = 20
-	label.offset_top = 138
-	return label
-
-
-## Llamado por Jugador.gd cada vez que cambia la racha o las pulsaciones
-## requeridas para crear el proximo set.
-func actualizar_racha(racha: int, requeridas: int) -> void:
-	label_racha.text = "RACHA: %d   |   CLICKS/SET: %d" % [racha, requeridas]
-
-
 ## Barra vertical a la izquierda de la pantalla (no tapa a los companeros
 ## de abajo, a diferencia de la version horizontal anterior).
 func _crear_barra_machete() -> BarraProgreso:
@@ -414,7 +475,7 @@ func _crear_barra_machete() -> BarraProgreso:
 	return barra
 
 
-## Llamado por Jugador.gd cada vez que cambia el contador 0/10 de creacion.
+## Llamado por Jugador.gd cada vez que cambia el contador de creacion.
 func actualizar_barra_machete(actual: int, total: int) -> void:
 	barra_machete.progreso = float(actual) / float(total) if total > 0 else 0.0
 
@@ -466,3 +527,4 @@ func _crear_fondo() -> void:
 	fondo.configurar(tam)
 	capa.add_child(fondo)
 	RenderingServer.set_default_clear_color(Color(0.10, 0.13, 0.22))
+

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3nwaacy38ili"
-path="res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"
+uid="uid://botgtmo4y82oe"
+path="res://.godot/imported/companero_verde.png-31847bb6d390b20747bb8c6ceb69f04e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/square_placeholder.png"
-dest_files=["res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"]
+source_file="res://assets/sprites machetazo 1/companero_verde.png"
+dest_files=["res://.godot/imported/companero_verde.png-31847bb6d390b20747bb8c6ceb69f04e.ctex"]
 
 [params]
 

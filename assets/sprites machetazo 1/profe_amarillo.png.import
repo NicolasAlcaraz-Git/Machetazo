@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c3nwaacy38ili"
-path="res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"
+uid="uid://dqh3s4fm6iq3v"
+path="res://.godot/imported/profe_amarillo.png-21d5102a3c90da686d3a75c0fab33922.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/placeholders/square_placeholder.png"
-dest_files=["res://.godot/imported/square_placeholder.png-661f9015d7d82fa05c4f14a29698310b.ctex"]
+source_file="res://assets/sprites machetazo 1/profe_amarillo.png"
+dest_files=["res://.godot/imported/profe_amarillo.png-21d5102a3c90da686d3a75c0fab33922.ctex"]
 
 [params]
 

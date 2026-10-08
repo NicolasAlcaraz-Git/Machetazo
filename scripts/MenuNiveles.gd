@@ -1,11 +1,11 @@
 extends Control
 class_name MenuNiveles
 
-## Version 0.6 - Menu de seleccion de nivel
-## Pantalla inicial simple con tres botones (NIVEL 1, 2 y 3). Al elegir un
-## nivel se carga su escena directamente (Aula.tscn, Aula2.tscn o Aula3.tscn)
-## y el juego corre exactamente igual que siempre: mismo Aula.gd, mismos
-## companeros, misma logica de temporizador y de fin de partida.
+## Version 0.7 - Menu de seleccion de nivel
+## Pantalla inicial con un boton por nivel (TUTORIAL, NIVEL 1, 2 y 3). Al
+## elegir un nivel se carga su escena directamente y el juego corre
+## exactamente igual que siempre: mismo Aula.gd, mismos companeros, misma
+## logica de temporizador y de fin de partida.
 ##
 ## Ademas de soportar mouse, los botones se manejan con las flechas del
 ## teclado (ui_left/ui_right/ui_up/ui_down) y se confirman con el boton de
@@ -13,6 +13,11 @@ class_name MenuNiveles
 ## Tambien responde a ui_accept (ENTER/Espacio) si se juega con teclado.
 
 const NIVELES = [
+	{
+		"nombre": "TUTORIAL",
+		"detalle": "Aprende a crear y entregar machetes.",
+		"escena": "res://scenes/TutorialAula.tscn",
+	},
 	{
 		"nombre": "NIVEL 1",
 		"detalle": "Aula clasica: 8 compañeros.",
@@ -98,8 +103,8 @@ func _crear_titulo() -> void:
 func _crear_botones() -> void:
 	const ANCHO := 420.0
 	const ALTO := 62.0
-	const TOP := 300.0
-	const PASO := 132.0
+	const TOP := 270.0
+	const PASO := 120.0
 
 	for i in NIVELES.size():
 		var nivel: Dictionary = NIVELES[i]

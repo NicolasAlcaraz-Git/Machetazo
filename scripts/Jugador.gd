@@ -19,7 +19,7 @@ class_name Jugador
 
 enum Estado {
 	ESPERANDO,  ## Estado inicial: observa, puede empezar a preparar un set.
-	CREANDO,    ## Contador 0/30, vulnerable si la profesora mira.
+	CREANDO,    ## Contador 0/20, vulnerable si la profesora mira.
 	APUNTANDO,  ## Cursor activo, se pasan los machetes del set en secuencia.
 	CONTROLANDO_EXTENSION, ## Apuntando desde un banco lateral (extension) hacia
 						   ## los 3 bancos extra de su lado.
@@ -30,8 +30,8 @@ const COLOR_PERDIO := Color(0.85, 0.2, 0.2, 1)
 const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 
 ## Cuantas pulsaciones hacen falta para terminar de preparar un set de
-## machetes (ver machetes_por_set). Ahora la preparacion lleva mas tiempo.
-@export var pulsaciones_para_crear: int = 30
+## machetes (ver machetes_por_set).
+@export var pulsaciones_para_crear: int = 20
 
 ## Cuantos machetes entran en cada set. Se preparan de una vez y luego se
 ## apuntan y entregan en secuencia (whack-a-mole) hasta agotar el set,
@@ -50,40 +50,12 @@ const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 ## barra empiece a vaciarse. Evita que decaiga entre pulsaciones rapidas.
 @export var retraso_decaimiento: float = 1.0
 
-## --- Sistema de rachas / combos ---
-
-## Cantidad exacta de machetes entregados en verde (PREPARADO) consecutivos
-## (sin fallar entre medio) que reduce las pulsaciones necesarias para crear
-## el proximo set. Con racha 5 -> se restan 5 pulsaciones, racha 10 -> 10, etc.
-@export var racha_para_reducir: int = 5
-
-## Cuantas pulsaciones se restan a la creacion cada vez que se alcanza un
-## nuevo multiplo de racha_para_reducir (5 -> 30, 25, 20...).
-@export var reduccion_racha: int = 5
-
-## Piso de pulsaciones: por mas racha que se acumule, nunca se pide crear un
-## set con menos de esta cantidad de clicks.
-@export var pulsaciones_minimas: int = 5
-
 @export var estado: Estado = Estado.ESPERANDO
 
-@onready var visual: AnimatedSprite2D = $Visual
+const TEX_JUGADOR = preload("res://assets/sprites machetazo 1/nene_arriba.png")
+
+@onready var visual: Sprite2D = $Visual
 @onready var aula: Aula = get_parent()
-
-## Valor base de pulsaciones_para_crear (se conserva para resetear cuando se
-## pierde la racha). Se toma de pulsaciones_para_crear en _ready.
-var _requeridas_base: int = 30
-
-## Pulsaciones requeridas ACTUALES, que van bajando de 5 en 5 con la racha
-## (30 -> 25 -> 20 -> ... -> minimo 5) y vuelven a _requeridas_base al fallar.
-var _requeridas_actual: int = 30
-
-## Racha actual: cantidad de machetes entregados en verde seguidos.
-var racha_actual: int = 0
-
-## Proximo multiplo de racha_para_reducir que le toca alcanzar para que la
-## creacion baje 5 pulsaciones. Ej.: 5 -> 10 -> 15...
-var _siguiente_hito_racha: int = 5
 
 var contador_machete: int = 0
 var _decaimiento_acumulado: float = 0.0
@@ -103,12 +75,11 @@ var _tween_destello: Tween = null
 
 
 func _ready() -> void:
-	_requeridas_base = pulsaciones_para_crear
-	_requeridas_actual = pulsaciones_para_crear
 	cursor = Cursor.new()
 	cursor.visible = false
 	add_child(cursor)
-	visual.modulate = COLOR_NORMAL
+	visual.texture = TEX_JUGADOR
+	visual.modulate = Color(1, 1, 1, 1)
 
 
 func _process(delta: float) -> void:
@@ -140,9 +111,9 @@ func _procesar_creacion(delta: float) -> void:
 		_decaimiento_acumulado = 0.0 # el pulso frena el decaimiento
 		_tiempo_sin_pulsar = 0.0
 		estado = Estado.CREANDO
-		aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+		aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
 		_destello_creacion()
-		if contador_machete >= _requeridas_actual:
+		if contador_machete >= pulsaciones_para_crear:
 			_terminar_creacion()
 		return
 
@@ -157,7 +128,7 @@ func _procesar_creacion(delta: float) -> void:
 				var bajar := int(_decaimiento_acumulado)
 				_decaimiento_acumulado -= float(bajar)
 				contador_machete = max(0, contador_machete - bajar)
-				aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+				aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
 
 
 ## Destello visual en el jugador con cada pulsacion valida al crear un
@@ -170,7 +141,7 @@ func _destello_creacion() -> void:
 		_tween_destello.kill()
 	visual.modulate = Color(0.7, 0.9, 1.0, 1.0)
 	_tween_destello = create_tween()
-	_tween_destello.tween_property(visual, "modulate", COLOR_NORMAL, 0.14)\
+	_tween_destello.tween_property(visual, "modulate", Color(1, 1, 1, 1), 0.14)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
@@ -277,15 +248,6 @@ func _intentar_lanzar() -> void:
 
 
 func _lanzamiento_exitoso(companero: Companero) -> void:
-	## La racha sume solo si el machete se entrega con el companero en verde
-	## (PREPARADO). En amarillo (ADVERTENCIA) o en el banco azul de extension
-	## la racha se congela: no suma ni resta.
-	match companero.estado:
-		Companero.Estado.PREPARADO:
-			_sumar_a_la_racha()
-		_:
-			aula.actualizar_racha(racha_actual, _requeridas_actual)
-
 	companero.recibir_machete()
 	aula.registrar_entrega_exitosa()
 	MacheteTrazo.crear(aula, position, companero.position)
@@ -321,11 +283,9 @@ func _error_lanzamiento() -> void:
 ## El machete le pega a un companero que no estaba atento (distraido o ya
 ## agotado): la profesora se da vuelta a mirar de inmediato (ver
 ## Profesora.forzar_mira()), se pierde tiempo y se desperdicia un machete
-## del set. No es derrota inmediata. Ademas, rompe la racha: vuelve a 0 y los
-## clicks para crear el proximo set vuelven a 30 (ver _resetear_racha).
+## del set. No es derrota inmediata.
 func _golpe_a_companero(companero: Companero) -> void:
 	aula.registrar_golpe(companero)
-	_resetear_racha()
 	Fx.shake(companero, 7.0, 0.18)
 	_descontar_machete()
 
@@ -339,31 +299,8 @@ func _volver_a_esperar() -> void:
 	_companero_controlado = null
 	cursor.visible = false
 	estado = Estado.ESPERANDO
-	aula.actualizar_barra_machete(contador_machete, _requeridas_actual)
+	aula.actualizar_barra_machete(contador_machete, pulsaciones_para_crear)
 	aula.actualizar_en_mano(machetes_en_mano, machetes_por_set)
-
-
-## --- Sistema de rachas / combos ---
-
-## Llamado cuando se entrega un machete con el companero en verde (PREPARADO).
-## Suma 1 a la racha; al alcanzar un nuevo multiplo de racha_para_reducir,
-## baja las pulsaciones para crear el proximo set (5 menos, hasta el piso).
-func _sumar_a_la_racha() -> void:
-	racha_actual += 1
-	if racha_actual >= _siguiente_hito_racha:
-		_siguiente_hito_racha += racha_para_reducir
-		_requeridas_actual = max(pulsaciones_minimas, _requeridas_actual - reduccion_racha)
-	aula.actualizar_racha(racha_actual, _requeridas_actual)
-
-
-## Llamado cuando se le da un machete a un companero que no estaba atento
-## (estado "rojo" = no disponible): la racha vuelve a 0 y los clicks para
-## crear el proximo set vuelven al valor base (30).
-func _resetear_racha() -> void:
-	racha_actual = 0
-	_siguiente_hito_racha = racha_para_reducir
-	_requeridas_actual = _requeridas_base
-	aula.actualizar_racha(racha_actual, _requeridas_actual)
 
 
 ## --- Extension (bancos laterales como puente) ---
@@ -537,7 +474,7 @@ func _perder() -> void:
 	cursor.visible = false
 	if _tween_destello != null and _tween_destello.is_valid():
 		_tween_destello.kill()
-	visual.modulate = COLOR_PERDIO
+	visual.modulate = Color(0.85, 0.2, 0.2, 1)
 	aula.mostrar_fin_partida("PERDISTE", false)
 
 
@@ -548,5 +485,5 @@ func _ganar() -> void:
 	cursor.visible = false
 	if _tween_destello != null and _tween_destello.is_valid():
 		_tween_destello.kill()
-	visual.modulate = COLOR_GANO
+	visual.modulate = Color(0.25, 0.8, 0.35, 1)
 	aula.mostrar_fin_partida("GANASTE", true)

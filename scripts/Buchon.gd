@@ -25,6 +25,7 @@ const COLOR_BLOQUEADO := Color(0.85, 0.3, 0.3, 0.7)
 @export var variacion_no_mira: float = 3.0
 @export var variacion_mira: float = 3.0
 @export var ciclo_activo: bool = true
+var enabled: bool = true
 ## Tiempo (segundos) que la profesora pasa quieta en NO_MIRA al arrancar.
 @export var tiempo_inicial_quieto: float = 10.0
 
@@ -37,7 +38,11 @@ const COLOR_BLOQUEADO := Color(0.85, 0.3, 0.3, 0.7)
 ## no bloquea. Evita muertes "frame perfect" justo en la transicion amarillo->rojo.
 @export var gracia_mira: float = 0.3
 
-@onready var visual: AnimatedSprite2D = $Visual
+const TEX_BASE = preload("res://assets/sprites machetazo 1/companero_blanco.png")
+
+const COLOR_ROSA = Color(0.95, 0.45, 0.6)
+
+@onready var visual: Sprite2D = $Visual
 
 var _tiempo_restante: float = 0.0
 var _parpadeo_timer: float = 0.0
@@ -58,13 +63,15 @@ func _ready() -> void:
 	_tiempo_restante = max(0.5, tiempo_inicial_quieto)
 
 func _process(delta: float) -> void:
+	if not enabled:
+		return
 	if not ciclo_activo:
 		return
 
 	if estado == Estado.ADVERTENCIA:
 		_parpadeo_timer += delta
 		var t := sin(_parpadeo_timer * _parpadeo_omega) * 0.5 + 0.5
-		visual.modulate = COLOR_ADVERTENCIA.lerp(COLOR_VERDE, t)
+		visual.modulate = COLOR_ADVERTENCIA.lerp(Color(1, 1, 1, 1), t)
 
 	if estado == Estado.MIRA and _gracia_mira > 0.0:
 		_gracia_mira -= delta
@@ -118,11 +125,15 @@ func _duracion_con_variacion(valor: Estado) -> float:
 
 
 func _actualizar_color() -> void:
+	_aplicar_textura()
+
+func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
+	visual.texture = TEX_BASE
 	match estado:
 		Estado.NO_MIRA:
-			Fx.color(visual, COLOR_NO_MIRA)
+			Fx.color(visual, COLOR_ROSA)
 		Estado.ADVERTENCIA:
 			Fx.color(visual, COLOR_ADVERTENCIA)
 		Estado.MIRA:
@@ -134,6 +145,8 @@ func esta_mirando() -> bool:
 
 
 func esta_bloqueando_companero(companero: Companero) -> bool:
+	if not enabled:
+		return false
 	if estado != Estado.MIRA:
 		return false
 	if _gracia_mira > 0.0:

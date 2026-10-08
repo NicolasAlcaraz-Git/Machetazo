@@ -95,7 +95,14 @@ var machetes_recibidos: int = 0
 		estado = value
 		_actualizar_color()
 
-@onready var visual: AnimatedSprite2D = $Visual
+const TEX_PREPARADO = preload("res://assets/sprites machetazo 1/companero_verde.png")
+const TEX_ADVERTENCIA = preload("res://assets/sprites machetazo 1/companero_amarillo.png")
+const TEX_DISTRAIDO = preload("res://assets/sprites machetazo 1/companero_blanco.png")
+const TEX_AGOTADO = preload("res://assets/sprites machetazo 1/companero_blanco.png")
+
+const COLOR_APAGADO = Color(0.55, 0.55, 0.55, 0.8)
+
+@onready var visual: Sprite2D = $Visual
 
 var _tiempo_restante: float = 0.0
 
@@ -103,6 +110,11 @@ var _tiempo_restante: float = 0.0
 ## (Jugador.CONTROLANDO_EXTENSION), el banco se congela en azul para que no
 ## siga variando de color hasta que el machete se entregue o se devuelva.
 var bajo_control: bool = false
+
+## Activado por tutorial: cuando false, el companero no inicia su ciclo
+## y permanece en estado DISTRAIDO (o EXTENSION si es extension). No recibe
+## ventanas de activacion del director mientras esta inactivo.
+var active: bool = true
 
 
 func _ready() -> void:
@@ -112,7 +124,14 @@ func _ready() -> void:
 		estado = Estado.EXTENSION
 		_tiempo_restante = INF
 	else:
-		_actualizar_color()
+		if not active:
+			estado = Estado.DISTRAIDO
+			_tiempo_restante = 0.0
+	_aplicar_textura()
+	if not active and not es_extension:
+		visual.modulate = COLOR_APAGADO
+	else:
+		visual.modulate = Color(1, 1, 1, 1)
 
 
 ## Llamado por Jugador.gd cuando le entrega un machete exitosamente.
@@ -136,8 +155,12 @@ func esta_agotado() -> bool:
 ## Llamado por Aula.gd (el "director") cuando decide que le toca a este
 ## companero abrir su ventana de disponibilidad normal (verde -> amarillo).
 func activar() -> void:
+	if not active:
+		return
 	estado = Estado.PREPARADO
 	_tiempo_restante = _con_variacion(duracion_preparado)
+	if not es_extension:
+		visual.modulate = Color(1, 1, 1, 1)
 
 
 ## Llamado por Jugador.gd cuando toma control de este banco lateral: lo
@@ -174,6 +197,7 @@ func avanzar(delta: float) -> void:
 	_tiempo_restante -= delta
 	if _tiempo_restante > 0.0:
 		if estado == Estado.OCUPADO:
+			_aplicar_textura()
 			queue_redraw()
 		return
 
@@ -196,6 +220,7 @@ func desactivar() -> void:
 		estado = Estado.EXTENSION
 	else:
 		estado = Estado.DISTRAIDO
+	_aplicar_textura()
 	queue_redraw() # limpia el anillo de cooldown
 
 
@@ -206,24 +231,37 @@ func _con_variacion(base: float) -> float:
 
 
 func _actualizar_color() -> void:
+	_aplicar_textura()
+
+func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
-	if esta_agotado() and estado != Estado.EXTENSION:   # <-- esta es la línea que cambia
-		Fx.color(visual, COLOR_AGOTADO)
+	if estado == Estado.EXTENSION:
+		visual.texture = load("res://assets/sprites machetazo 1/nene_arriba.png")
+		visual.modulate = Color(1, 1, 1, 1)
 		return
-	var color: Color
+	if esta_agotado():
+		visual.texture = TEX_AGOTADO
+		visual.modulate = COLOR_APAGADO
+		return
+	if estado == Estado.OCUPADO:
+		visual.texture = TEX_DISTRAIDO
+		visual.modulate = COLOR_APAGADO
+		return
 	match estado:
 		Estado.PREPARADO:
-			color = COLOR_PREPARADO
+			visual.texture = TEX_PREPARADO
+			visual.modulate = Color(1, 1, 1, 1)
 		Estado.ADVERTENCIA:
-			color = COLOR_ADVERTENCIA
-		Estado.EXTENSION:
-			color = COLOR_EXTENSION
-		Estado.OCUPADO:
-			color = color_ocupado
+			visual.texture = TEX_ADVERTENCIA
+			visual.modulate = Color(1, 1, 1, 1)
 		Estado.DISTRAIDO:
-			color = COLOR_DISTRAIDO
-	Fx.color(visual, color)
+			visual.texture = TEX_DISTRAIDO
+			if not active and not es_extension:
+				visual.modulate = COLOR_APAGADO
+			else:
+				visual.modulate = Color(1, 1, 1, 1)
+		_: pass
 
 
 ## Anillo de cooldown: se dibuja unicamente mientras el companero esta
@@ -245,6 +283,27 @@ func _draw() -> void:
 ## como el banco lateral en azul (extension) se consideran lanzamientos
 ## validos. Un companero agotado nunca es valido. Un companero OCUPADO
 ## (copiando) tampoco puede recibir otro machete todavia.
+func set_active(v: bool) -> void:
+	active = v
+	if es_extension:
+		estado = Estado.EXTENSION
+		_tiempo_restante = INF
+		_aplicar_textura()
+		return
+	if not active:
+		_tiempo_restante = 0.0
+		estado = Estado.DISTRAIDO
+		if is_instance_valid(visual):
+			_aplicar_textura()
+		queue_redraw()
+	else:
+		_tiempo_restante = 0.0
+		estado = Estado.DISTRAIDO
+		if is_instance_valid(visual):
+			_aplicar_textura()
+		queue_redraw()
+
+
 func esta_disponible() -> bool:
 	# Un companero de extension esta SIEMPRE disponible como puente: es azul
 	# permanente y puede controlarse en cualquier momento.

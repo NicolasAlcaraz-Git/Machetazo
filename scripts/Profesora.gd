@@ -35,6 +35,8 @@ const COLOR_VERDE := Color(0.25, 0.8, 0.35)
 ## Permite pausar el ciclo automatico (util para debug).
 @export var ciclo_activo: bool = true
 
+var enabled: bool = true
+
 @export var estado: Estado = Estado.NO_MIRA:
 	set(value):
 		estado = value
@@ -46,7 +48,11 @@ const COLOR_VERDE := Color(0.25, 0.8, 0.35)
 ## para reaccionar). El cono aparece de forma progresiva en este lapso.
 @export var gracia_mira: float = 0.35
 
-@onready var visual: AnimatedSprite2D = $Visual
+const TEX_VERDE = preload("res://assets/sprites machetazo 1/profe_verde.png")
+const TEX_AMARILLO = preload("res://assets/sprites machetazo 1/profe_amarillo.png")
+const TEX_ROJO = preload("res://assets/sprites machetazo 1/profe_rojo.png")
+
+@onready var visual: Sprite2D = $Visual
 
 var _tiempo_restante: float = 0.0
 var _parpadeo_timer: float = 0.0
@@ -61,13 +67,21 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if not enabled:
+		return
 	if not ciclo_activo:
 		return
 
 	if estado == Estado.ADVERTENCIA:
 		_parpadeo_timer += delta
 		var t := sin(_parpadeo_timer * _parpadeo_omega) * 0.5 + 0.5
-		visual.modulate = COLOR_ADVERTENCIA.lerp(COLOR_VERDE, t)
+		if t > 0.5:
+			visual.texture = TEX_AMARILLO
+		else:
+			visual.texture = TEX_VERDE
+		visual.rotation = PI
+		visual.position = Vector2(sin(_parpadeo_timer * _parpadeo_omega * 2.0) * 0.6, 0.0)
+		visual.modulate = Color(1, 1, 1, 1)
 
 	if estado == Estado.MIRA and _gracia_mira > 0.0:
 		_gracia_mira -= delta
@@ -105,15 +119,27 @@ func _duracion_con_variacion(valor: Estado) -> float:
 
 
 func _actualizar_color() -> void:
+	_aplicar_textura()
+
+func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
 	match estado:
 		Estado.NO_MIRA:
-			Fx.color(visual, COLOR_NO_MIRA)
+			visual.texture = TEX_VERDE
+			visual.rotation = PI
+			visual.position = Vector2.ZERO
+			visual.modulate = Color(1, 1, 1, 1)
 		Estado.ADVERTENCIA:
-			Fx.color(visual, COLOR_ADVERTENCIA)
+			visual.texture = TEX_AMARILLO
+			visual.rotation = PI
+			visual.position = Vector2.ZERO
+			visual.modulate = Color(1, 1, 1, 1)
 		Estado.MIRA:
-			Fx.color(visual, COLOR_MIRA)
+			visual.texture = TEX_ROJO
+			visual.rotation = 0.0
+			visual.position = Vector2.ZERO
+			visual.modulate = Color(1, 1, 1, 1)
 
 
 func esta_mirando() -> bool:
@@ -126,6 +152,8 @@ func esta_mirando() -> bool:
 
 ## Forzar la profesora a mirar de inmediato (ej: golpe a companero distraido).
 func forzar_mira() -> void:
+	if not enabled:
+		return
 	if estado == Estado.MIRA:
 		return
 	estado = Estado.MIRA
