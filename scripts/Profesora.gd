@@ -4,15 +4,15 @@ class_name Profesora
 ## Version 0.4 - Profesora
 ## Ciclo: NO_MIRA -> ADVERTENCIA -> MIRA -> NO_MIRA -> (repetir)
 ##
-## NO_MIRA (verde): seguro, el jugador puede actuar.
-## ADVERTENCIA (amarillo parpadea 3 veces): advertencia, NO detecta.
-## MIRA (rojo): esta mirando, cualquier accion = derrota.
-## La vuelta de MIRA va directo a NO_MIRA (sin pasar por amarillo).
+## NO_MIRA (de espaldas, camisa verde): seguro, el jugador puede actuar.
+## ADVERTENCIA (parpadea estornudando/normal): advertencia, NO detecta.
+## MIRA (mirando a los alumnos): esta mirando, cualquier accion = derrota.
+## La vuelta de MIRA va directo a NO_MIRA (sin pasar por la advertencia).
 
 enum Estado {
-	NO_MIRA,     ## Verde: seguro.
-	ADVERTENCIA, ## Amarillo parpadeante: solo advertencia, NO detecta.
-	MIRA,        ## Rojo: esta mirando, detecta acciones.
+	NO_MIRA,     ## De espaldas: seguro.
+	ADVERTENCIA, ## Parpadea estornudando/normal: solo advertencia, NO detecta.
+	MIRA,        ## Mirando a los alumnos, detecta acciones.
 }
 
 const COLOR_NO_MIRA := Color(0.25, 0.8, 0.35)
@@ -48,9 +48,13 @@ var enabled: bool = true
 ## para reaccionar). El cono aparece de forma progresiva en este lapso.
 @export var gracia_mira: float = 0.35
 
-const TEX_VERDE = preload("res://assets/sprites machetazo 1/profe_verde.png")
-const TEX_AMARILLO = preload("res://assets/sprites machetazo 1/profe_amarillo.png")
-const TEX_ROJO = preload("res://assets/sprites machetazo 1/profe_rojo.png")
+## Sprites de la profesora. El de NO_MIRA y el de ADVERTENCIA estan dibujados
+## de espaldas a los alumnos (la cabeza hacia abajo en la imagen), por eso se
+## muestran girados 180 grados; el de estornudos esta dibujado ya de espaldas
+## y el de MIRA mirando de frente, asi que esos dos van con giro 0.
+const TEX_VERDE = preload("res://assets/sprites/profe_verde.png")
+const TEX_AMARILLO = preload("res://assets/sprites/profe_estornudando.png")
+const TEX_ROJO = preload("res://assets/sprites/profe_mirando_alumnos.png")
 
 @onready var visual: Sprite2D = $Visual
 
@@ -75,11 +79,12 @@ func _process(delta: float) -> void:
 	if estado == Estado.ADVERTENCIA:
 		_parpadeo_timer += delta
 		var t := sin(_parpadeo_timer * _parpadeo_omega) * 0.5 + 0.5
+		# Parpadeo de sprites: estornudando <-> normal. Los dos dibujos se
+		# muestran de espaldas a los alumnos (por eso el verde va girado 180).
 		if t > 0.5:
-			visual.texture = TEX_AMARILLO
+			_poner_sprite(TEX_AMARILLO, 0.0)
 		else:
-			visual.texture = TEX_VERDE
-		visual.rotation = PI
+			_poner_sprite(TEX_VERDE, PI)
 		visual.position = Vector2(sin(_parpadeo_timer * _parpadeo_omega * 2.0) * 0.6, 0.0)
 		visual.modulate = Color(1, 1, 1, 1)
 
@@ -124,22 +129,24 @@ func _actualizar_color() -> void:
 func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
+	visual.position = Vector2.ZERO
+	visual.modulate = Color(1, 1, 1, 1)
 	match estado:
 		Estado.NO_MIRA:
-			visual.texture = TEX_VERDE
-			visual.rotation = PI
-			visual.position = Vector2.ZERO
-			visual.modulate = Color(1, 1, 1, 1)
+			_poner_sprite(TEX_VERDE, PI)
 		Estado.ADVERTENCIA:
-			visual.texture = TEX_AMARILLO
-			visual.rotation = PI
-			visual.position = Vector2.ZERO
-			visual.modulate = Color(1, 1, 1, 1)
+			_poner_sprite(TEX_AMARILLO, 0.0)
 		Estado.MIRA:
-			visual.texture = TEX_ROJO
-			visual.rotation = 0.0
-			visual.position = Vector2.ZERO
-			visual.modulate = Color(1, 1, 1, 1)
+			_poner_sprite(TEX_ROJO, 0.0)
+
+
+## Cambia textura y giro del sprite de la profesora. El dibujo verde esta
+## hecho de frente, asi que se muestra girado 180 grados para que aparezca
+## de espaldas a los alumnos; el de estornudos ya esta dibujado de espaldas
+## y el de mirando a los alumnos de frente, asi que esos van con giro 0.
+func _poner_sprite(textura: Texture2D, giro: float) -> void:
+	visual.texture = textura
+	visual.rotation = giro
 
 
 func esta_mirando() -> bool:

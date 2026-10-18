@@ -52,7 +52,7 @@ const COLOR_GANO := Color(0.25, 0.8, 0.35, 1)
 
 @export var estado: Estado = Estado.ESPERANDO
 
-const TEX_JUGADOR = preload("res://assets/sprites machetazo 1/nene_arriba.png")
+const TEX_JUGADOR = preload("res://assets/sprites/nene_arriba.png")
 
 @onready var visual: Sprite2D = $Visual
 @onready var aula: Aula = get_parent()

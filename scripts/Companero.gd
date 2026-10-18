@@ -52,7 +52,10 @@ const COLOR_EXTENSION := Color(0.2, 0.5, 0.9)   ## azul, igual al jugador.
 const COLOR_DISTRAIDO := Color(0.55, 0.55, 0.55)
 const COLOR_AGOTADO := Color(1, 1, 1)
 
-@export var direccion: Direccion = Direccion.ARRIBA
+@export var direccion: Direccion = Direccion.ARRIBA:
+	set(value):
+		direccion = value
+		_aplicar_textura()
 
 ## Marca a este companero como uno de los DOS bancos laterales que sirven de
 ## "extension" del jugador (ver cabecera). Estos estan SIEMPRE en azul
@@ -95,12 +98,29 @@ var machetes_recibidos: int = 0
 		estado = value
 		_actualizar_color()
 
-const TEX_PREPARADO = preload("res://assets/sprites machetazo 1/companero_verde.png")
-const TEX_ADVERTENCIA = preload("res://assets/sprites machetazo 1/companero_amarillo.png")
-const TEX_DISTRAIDO = preload("res://assets/sprites machetazo 1/companero_blanco.png")
-const TEX_AGOTADO = preload("res://assets/sprites machetazo 1/companero_blanco.png")
+## Sprites por estado. DISTRAIDO (normal) y AGOTADO comparten un solo dibujo
+## (es el mismo nene leyendo); PREPARADO y ADVERTENCIA tienen una version por
+## lado, porque estiran la mano hacia donde esta el nene del medio.
+const TEX_PREPARADO_IZQ = preload("res://assets/sprites/companero_listo_izq.png")
+const TEX_PREPARADO_DER = preload("res://assets/sprites/companero_listo_der.png")
+const TEX_ADVERTENCIA_IZQ = preload("res://assets/sprites/companero_por_prepararse_izq.png")
+const TEX_ADVERTENCIA_DER = preload("res://assets/sprites/companero_por_prepararse_der.png")
+const TEX_DISTRAIDO = preload("res://assets/sprites/companero_distraido.png")
+const TEX_AGOTADO = preload("res://assets/sprites/companero_distraido.png")
+## Los bancos de extension (azules) muestran al pibe gordo en vez del nene.
+const TEX_EXTENSION = preload("res://assets/sprites/pibe_gordo.png")
 
 const COLOR_APAGADO = Color(0.55, 0.55, 0.55, 0.8)
+
+## True si este companero esta en la fila derecha y hay que mostrarlo con la
+## mano estirada hacia el centro (sprites "_der" de listo y por prepararse).
+## Se determina por su POSICION: todo lo que este a la derecha del nene del
+## medio (x > 0) usa los sprites de la derecha; el resto (incluida la fila
+## central, x = 0) usa los de la izquierda. Cubre niveles 1, 2, 3 (incluidos
+## los bancos extra de la derecha) y el tutorial, sin tocar cada escena.
+## Se recalcula en cada _aplicar_textura(), asi no depende de ningun orden
+## de inicializacion.
+var mirar_derecha: bool = false
 
 @onready var visual: Sprite2D = $Visual
 
@@ -233,11 +253,29 @@ func _con_variacion(base: float) -> float:
 func _actualizar_color() -> void:
 	_aplicar_textura()
 
+
+## Decide el lado segun la posicion actual del companero.
+func _actualizar_lado() -> void:
+	mirar_derecha = position.x > 0.0
+
+
+## Elige el sprite del lado que le corresponde a este companero: los de la
+## fila derecha usan la version "_der" (mano estirada hacia el centro) y
+## todos los demas la "_izq".
+func _textura_lado(tex_izq: Texture2D, tex_der: Texture2D) -> Texture2D:
+	return tex_der if mirar_derecha else tex_izq
+
+
 func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
+	# El lado se decide en el momento segun la posicion del companero: los de
+	# la fila derecha se dibujan espejados, estirando la mano hacia el centro
+	# (hacia el nene) en vez de hacia el borde del aula.
+	_actualizar_lado()
+	visual.flip_h = mirar_derecha
 	if estado == Estado.EXTENSION:
-		visual.texture = load("res://assets/sprites machetazo 1/nene_arriba.png")
+		visual.texture = TEX_EXTENSION
 		visual.modulate = Color(1, 1, 1, 1)
 		return
 	if esta_agotado():
@@ -250,10 +288,10 @@ func _aplicar_textura() -> void:
 		return
 	match estado:
 		Estado.PREPARADO:
-			visual.texture = TEX_PREPARADO
+			visual.texture = _textura_lado(TEX_PREPARADO_IZQ, TEX_PREPARADO_DER)
 			visual.modulate = Color(1, 1, 1, 1)
 		Estado.ADVERTENCIA:
-			visual.texture = TEX_ADVERTENCIA
+			visual.texture = _textura_lado(TEX_ADVERTENCIA_IZQ, TEX_ADVERTENCIA_DER)
 			visual.modulate = Color(1, 1, 1, 1)
 		Estado.DISTRAIDO:
 			visual.texture = TEX_DISTRAIDO

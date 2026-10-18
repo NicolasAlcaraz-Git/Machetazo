@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cn8ug4d8tn566"]
 
 [ext_resource type="Script" uid="uid://4wa0q1lheu31" path="res://scripts/Jugador.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://bv66ao46o4jep" path="res://assets/sprites machetazo 1/nene_arriba.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/nene_arriba.png" id="2"]
 
 [node name="Jugador" type="Node2D" unique_id=2019015775]
 script = ExtResource("1")

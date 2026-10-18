@@ -8,7 +8,7 @@ class_name Fondo
 @export var color_inferior := Color(0.10, 0.13, 0.22, 1.0)
 @export var textura: Texture2D
 
-const _TEX_AULA = preload("res://assets/sprites machetazo 1/Aula_1.png")
+const _TEX_AULA = preload("res://assets/sprites/Aula_1.png")
 
 var _tam: Vector2 = Vector2.ZERO
 

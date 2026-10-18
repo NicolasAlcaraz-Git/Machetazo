@@ -4,19 +4,15 @@ class_name Buchon
 ## Version 0.2 - Buchon
 ## Segundo enemigo: mismos estados que la profesora.
 ## NO_MIRA -> ADVERTENCIA -> MIRA -> NO_MIRA (sin amarillo en la vuelta).
-## ADVERTENCIA parpadea entre amarillo y verde, NO detecta.
+## ADVERTENCIA parpadea con el sprite de "distraida", NO detecta.
 ## MIRA bloquea companeros de un lado y si le dan machete a uno bloqueado = perdida.
 
 enum Estado {
-	NO_MIRA,     ## Verde: no bloquea a nadie.
-	ADVERTENCIA, ## Amarillo parpadeante: solo advertencia, NO bloquea.
-	MIRA,        ## Rojo: bloquea companeros de un lado.
+	NO_MIRA,     ## Por prepararse: no bloquea a nadie.
+	ADVERTENCIA, ## Parpadea con la distraida: solo advertencia, NO bloquea.
+	MIRA,        ## Se da vuelta a un lado y bloquea a los companeros de ese lado.
 }
 
-const COLOR_NO_MIRA := Color(1, 1, 1)
-const COLOR_ADVERTENCIA := Color(0.95, 0.85, 0.2)
-const COLOR_MIRA := Color(0.85, 0.2, 0.2)
-const COLOR_VERDE := Color(1, 1, 1)
 const COLOR_BLOQUEADO := Color(0.85, 0.3, 0.3, 0.7)
 
 @export var duracion_no_mira: float = 5.0
@@ -38,9 +34,13 @@ var enabled: bool = true
 ## no bloquea. Evita muertes "frame perfect" justo en la transicion amarillo->rojo.
 @export var gracia_mira: float = 0.3
 
-const TEX_BASE = preload("res://assets/sprites machetazo 1/companero_blanco.png")
-
-const COLOR_ROSA = Color(0.95, 0.45, 0.6)
+## Sprites de la buchona. En NO_MIRA se la ve "por prepararse" (su estado
+## normal); en ADVERTENCIA parpadea con la distraida; en MIRA usa la del lado
+## hacia el que se da vuelta (mira_izquierda).
+const TEX_NO_MIRA = preload("res://assets/sprites/buchona_por_prepararse.png")
+const TEX_ADVERTENCIA = preload("res://assets/sprites/buchona_distraida.png")
+const TEX_MIRA_IZQUIERDA = preload("res://assets/sprites/buchona_mirando_para_la_izquierda.png")
+const TEX_MIRA_DERECHA = preload("res://assets/sprites/buchona_mirando_para_la_derecha.png")
 
 @onready var visual: Sprite2D = $Visual
 
@@ -71,7 +71,9 @@ func _process(delta: float) -> void:
 	if estado == Estado.ADVERTENCIA:
 		_parpadeo_timer += delta
 		var t := sin(_parpadeo_timer * _parpadeo_omega) * 0.5 + 0.5
-		visual.modulate = COLOR_ADVERTENCIA.lerp(Color(1, 1, 1, 1), t)
+		# Parpadeo de sprites (sin tintes): distraida <-> por prepararse.
+		visual.texture = TEX_NO_MIRA if t > 0.5 else TEX_ADVERTENCIA
+		visual.modulate = Color(1, 1, 1, 1)
 
 	if estado == Estado.MIRA and _gracia_mira > 0.0:
 		_gracia_mira -= delta
@@ -89,8 +91,10 @@ func _avanzar_estado() -> void:
 			_parpadeo_timer = 0.0
 			_tiempo_restante += duracion_advertencia
 		Estado.ADVERTENCIA:
-			estado = Estado.MIRA
+			# El lado se elige ANTES de cambiar de estado: el setter de estado
+			# aplica el sprite y tiene que usar el lado recien elegido.
 			mira_izquierda = _elegir_lado()
+			estado = Estado.MIRA
 			_gracia_mira = gracia_mira
 			_tiempo_restante += _duracion_con_variacion(Estado.MIRA)
 		Estado.MIRA:
@@ -130,14 +134,18 @@ func _actualizar_color() -> void:
 func _aplicar_textura() -> void:
 	if not is_instance_valid(visual):
 		return
-	visual.texture = TEX_BASE
+	# Sin tintes de color: cada estado tiene su propio dibujo.
+	visual.modulate = Color(1, 1, 1, 1)
 	match estado:
 		Estado.NO_MIRA:
-			Fx.color(visual, COLOR_ROSA)
+			visual.texture = TEX_NO_MIRA
 		Estado.ADVERTENCIA:
-			Fx.color(visual, COLOR_ADVERTENCIA)
+			visual.texture = TEX_ADVERTENCIA
 		Estado.MIRA:
-			Fx.color(visual, COLOR_MIRA)
+			if mira_izquierda:
+				visual.texture = TEX_MIRA_IZQUIERDA
+			else:
+				visual.texture = TEX_MIRA_DERECHA
 
 
 func esta_mirando() -> bool:

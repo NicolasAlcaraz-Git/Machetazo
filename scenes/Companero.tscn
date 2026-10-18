@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://o0uiuap6cg8o"]
 
 [ext_resource type="Script" uid="uid://d06e263lndcp6" path="res://scripts/Companero.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://dnxs6ekb1flws" path="res://assets/sprites machetazo 1/companero_verde.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/companero_listo_izq.png" id="2"]
 
 [node name="Companero" type="Node2D" unique_id=1645962014]
 script = ExtResource("1")

@@ -1,12 +1,17 @@
 extends Node2D
 class_name MacheteTrazo
 
-## Efecto decorativo del lanzamiento: un destello/trazo que viaja de un
-## punto a otro (jugador -> companero). NO bloquea el gameplay: la entrega
-## del machete ya ocurrio cuando se instancia esto.
+## Efecto decorativo del lanzamiento: la bolita de papel viaja de un punto a
+## otro (jugador -> companero). NO bloquea el gameplay: la entrega del machete
+## ya ocurrio cuando se instancia esto.
 
-const COLOR_TRAZO := Color(0.95, 0.9, 0.5, 1.0)
-const COLOR_DESTELLO := Color(1, 1, 1, 1.0)
+## Bolita de papel arrugado que viaja hasta el companero.
+const TEX_PAPEL = preload("res://assets/sprites/papel.png")
+
+## La bola de papel no llena todo el cuadrado de la textura (tiene un poco de
+## margen transparente alrededor), asi que se la dibuja un poco mas grande que
+## el diametro del circulo que reemplaza para que se vea del mismo tamano.
+const ESCALA_PAPEL := 2.3
 
 @export var vel_diametro: float = 160.0
 
@@ -49,5 +54,8 @@ func _esperar_y_liberar() -> void:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, _radio, COLOR_TRAZO)
-	draw_circle(Vector2.ZERO, _radio * 0.5, COLOR_DESTELLO)
+	# La bola de papel viaja centrada en el nodo y crece igual que el circulo
+	# viejo (ver _radio y vel_diametro en _process).
+	var lado := _radio * ESCALA_PAPEL
+	var tam := Vector2(lado, lado)
+	draw_texture_rect(TEX_PAPEL, Rect2(-tam * 0.5, tam), false)
