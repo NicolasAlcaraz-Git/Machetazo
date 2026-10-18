@@ -88,9 +88,6 @@ var _flechas: Array[Sprite2D] = []
 
 
 func _ready() -> void:
-	var db = get_node_or_null("DifuminadoBordes")
-	if db != null:
-		db.queue_free()
 	is_tutorial = true
 	penalties_enabled = false
 	super._ready()

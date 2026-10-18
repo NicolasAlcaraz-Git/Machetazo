@@ -118,9 +118,6 @@ var _entregas_exitosas: int = 0
 
 
 func _ready() -> void:
-	var db = get_node_or_null("DifuminadoBordes")
-	if db != null:
-		db.queue_free()
 	for hijo in $Companeros.get_children():
 		if hijo is Buchon:
 			buchon = hijo
